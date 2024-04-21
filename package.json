@@ -1,0 +1,54 @@
+{
+  "name": "storybook-addon-vite-mock",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -b -w",
+    "lint": "eslint ./src",
+    "lint:fix": "eslint --fix ./src"
+  },
+  "dependencies": {
+    "@storybook/jest": "^0.2.3",
+    "acorn": "^8.11.3",
+    "acorn-walk": "^8.3.2",
+    "astring": "^1.8.6",
+    "jest-mock": "^27.5.1",
+    "react-json-tree": "^0.19.0",
+    "vite": "^5.2.10"
+  },
+  "devDependencies": {
+    "@storybook/components": "^8.0.8",
+    "@storybook/manager-api": "^8.0.8",
+    "@storybook/preview-api": "^8.0.8",
+    "@storybook/react": "^8.0.8",
+    "@storybook/types": "^8.0.8",
+    "@types/react": "^18.2.79",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "^2.29.1",
+    "react": "^18.2.0",
+    "typescript": "^5.4.5"
+  },
+  "resolutions": {
+    "strip-ansi": "6.0.1"
+  },
+  "keywords": [
+    "storybook",
+    "react",
+    "test",
+    "jest",
+    "mock",
+    "vite",
+    "module",
+    "import",
+    "interactions"
+  ],
+  "author": "SoraKumo <info@croud.jp>",
+  "repository": "https://github.com/SoraKumo001/storybook-addon-vite-mock"
+}
