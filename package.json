@@ -1,8 +1,14 @@
 {
   "name": "storybook-addon-vite-mock",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./preset": "./dist/preset.js",
+    "./dist/preview.js": "./dist/preview.js"
+  },
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "build": "tsc",

@@ -141,14 +141,11 @@ Button.defaultProps = {
 The `mockRestore()` is automatically performed after the Story display is finished.
 
 ```tsx
-import { fn, within } from '@storybook/test';
-
-import * as React from 'react';
+import { fn } from '@storybook/test';
 import { StoryObj } from '@storybook/react';
-
 import { Button } from './Button';
 import { Test } from './test';
-import { createMock, getMock, render } from '../.storybook/dist';
+import { createMock, getMock, render } from 'storybook-addon-vite-mock';
 
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
 export default {
