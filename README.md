@@ -11,7 +11,7 @@ Added 'storybook-addon-vite-mock' to Storybook addons.
 Only works if Webpack is used in the Builder.
 
 - Sample code  
-  https://github.com/SoraKumo001/storybook-module-mock
+  https://github.com/SoraKumo001/storybook-addon-vite-mock-test
 
 ## Addon options
 
