@@ -1,7 +1,7 @@
 import { mergeConfig } from 'vite';
 import { AddonOptions } from './types.js';
 import { viteMockPlugin } from './vite-plugin/index.js';
-import type { Options, StorybookConfig } from '@storybook/types';
+import type { Options } from '@storybook/types';
 
 export const managerEntries = (entry: string[] = []): string[] => [
   ...entry,
@@ -21,8 +21,3 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
     config
   );
 };
-
-export const previewAnnotations: StorybookConfig['previewAnnotations'] = (entry = []) => [
-  ...entry,
-  require.resolve('./preview'),
-];
