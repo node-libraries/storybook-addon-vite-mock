@@ -9,6 +9,59 @@ const DEFAULT = '___default___';
 const VIRTUAL_MOCK_NAME = 'virtual:___mock.js';
 const MOCK_FILE = './mock/___mock.js';
 
+function isEsmImport(ast: Program) {
+  let hasEsm = false;
+  simple(ast, {
+    ImportDeclaration(node) {
+      if (
+        node.specifiers.some(
+          (specifier) =>
+            'imported' in specifier &&
+            'name' in specifier.imported &&
+            specifier.imported.name === '__esm'
+        )
+      ) {
+        hasEsm = true;
+      }
+    },
+  });
+  return hasEsm;
+}
+
+function isProxy(ast: Program) {
+  const imports = new Set<string>();
+  const exports = new Set<string>();
+
+  // importされた名前を抽出
+  simple(ast, {
+    ImportSpecifier(node) {
+      if ('name' in node.imported) imports.add(node.imported.name);
+    },
+    ExportSpecifier(node) {
+      if ('name' in node.exported) exports.add(node.exported.name);
+    },
+    ExportNamedDeclaration(node) {
+      if (node.declaration) {
+        if ('declarations' in node.declaration) {
+          // VariableDeclaration
+          node.declaration.declarations.forEach((decl) => {
+            if ('name' in decl.id) exports.add(decl.id.name);
+          });
+        } else if (node.declaration.id) {
+          // FunctionDeclaration, ClassDeclaration
+          exports.add(node.declaration.id.name);
+        }
+      }
+      if (node.specifiers) {
+        node.specifiers.forEach((specifier) => {
+          if ('name' in specifier.local) exports.add(specifier.local.name);
+        });
+      }
+    },
+  });
+  return Array.from(exports).every((name) => imports.has(name)) && exports.size > 0;
+}
+
 function convertCommonJS(ast: Program) {
   let type: 'module' | 'exports' | undefined = undefined;
   simple(ast, {
@@ -41,28 +94,6 @@ function convertCommonJS(ast: Program) {
     ast.body.push(...footer.body);
   }
   return type;
-}
-
-function isCommonJSWrap(ast: Program) {
-  const VariableDeclaration = ast.body[0];
-  const ExportNamedDeclaration = ast.body[1];
-  if (VariableDeclaration?.type === 'VariableDeclaration') {
-    const declaration = VariableDeclaration.declarations[0];
-    if (
-      declaration?.init?.type === 'ObjectExpression' &&
-      declaration.init.properties.length === 0
-    ) {
-      if (ExportNamedDeclaration?.type === 'ExportNamedDeclaration') {
-        const specifier = ExportNamedDeclaration.specifiers[0];
-
-        return (
-          specifier?.exported.type === 'Identifier' &&
-          (specifier.exported.name === '__exports' || specifier.exported.name === '__module')
-        );
-      }
-    }
-  }
-  return false;
 }
 
 function removeExport(ast: Program) {
@@ -182,7 +213,6 @@ function removeExport(ast: Program) {
           exports[DEFAULT] = node.declaration.name;
           return [];
         }
-        console.log(node);
         throw new Error('Not implemented');
       }
       return [node];
@@ -245,6 +275,28 @@ const convertPrivate = (ast: Program) => {
   ast.body = [...imports, node];
 };
 
+function isCommonJSWrap(ast: Program) {
+  const VariableDeclaration = ast.body[0];
+  const ExportNamedDeclaration = ast.body[1];
+  if (VariableDeclaration?.type === 'VariableDeclaration') {
+    const declaration = VariableDeclaration.declarations[0];
+    if (
+      declaration?.init?.type === 'ObjectExpression' &&
+      declaration.init.properties.length === 0
+    ) {
+      if (ExportNamedDeclaration?.type === 'ExportNamedDeclaration') {
+        const specifier = ExportNamedDeclaration.specifiers[0];
+
+        return (
+          specifier?.exported.type === 'Identifier' &&
+          (specifier.exported.name === '__exports' || specifier.exported.name === '__module')
+        );
+      }
+    }
+  }
+  return false;
+}
+
 export const viteMockPlugin = (props?: {
   debug?: string;
   exclude?: (id: string) => boolean;
@@ -275,7 +327,14 @@ export const viteMockPlugin = (props?: {
       if (!id.match(/\.(ts|js)(\?.*)?$/) || id === VIRTUAL_MOCK_NAME || exclude?.(id)) {
         return null;
       }
+      if (code.split('\n').some((line) => line.startsWith('// node_modules/@storybook/'))) {
+        return null;
+      }
+
       const ast = parse(code, { sourceType: 'module', ecmaVersion: 'latest' });
+      if (isEsmImport(ast) || isCommonJSWrap(ast) || isProxy(ast)) {
+        return null;
+      }
       const p = path.relative(
         path.normalize(path.resolve('./')),
         path.normalize(id.replaceAll('?', '-').replaceAll('\0', ''))
@@ -286,10 +345,6 @@ export const viteMockPlugin = (props?: {
         .replaceAll(':', '-')
         .replaceAll('?', '-');
       try {
-        if (isCommonJSWrap(ast)) {
-          return null;
-        }
-
         if (debug) {
           fs.writeFileSync(path.resolve(debug, name), code);
           fs.writeFileSync(path.resolve(debug, `${name}.json`), JSON.stringify(ast, null, 2));

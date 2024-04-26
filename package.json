@@ -1,12 +1,12 @@
 {
   "name": "storybook-addon-vite-mock",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
     "./preset": "./dist/preset.js",
-    "./dist/preview.js": "./dist/preview.js"
+    "./preview": "./dist/preview.js"
   },
   "type": "module",
   "license": "MIT",
@@ -14,7 +14,8 @@
     "build": "tsc",
     "watch": "tsc -b -w",
     "lint": "eslint ./src",
-    "lint:fix": "eslint --fix ./src"
+    "lint:fix": "eslint --fix ./src",
+    "cp": "cpy dist ../../../test/vite/storybook-vite/node_modules/storybook-addon-vite-mock"
   },
   "dependencies": {
     "@storybook/jest": "^0.2.3",

@@ -16,19 +16,19 @@ const setGlobalFunction = <
 const funcMap: Record<symbol, { original: Function; custom: Function }> = {};
 const ___setMock = <T extends Function>(func: T, custom: T) => {
   const key = '___symbol' in func && (func.___symbol as symbol);
-  if (!key) throw new Error('Function is not a mock');
+  if (!key) throw new Error(`Function is not a mock '${func.name}'`);
   funcMap[key] = { ...funcMap[key], custom };
   return funcMap[key].original as T;
 };
 const ___getOriginal = <T extends Function>(func: T) => {
   const key = '___symbol' in func && (func.___symbol as symbol);
-  if (!key) throw new Error('Function is not a mock');
+  if (!key) throw new Error(`Function is not a mock '${func.name}'`);
   return funcMap[key].original as T;
 };
 
 const ___createMock = (exp: Record<string, unknown>) => {
   const v = Object.entries(exp).map(([key, original]) => {
-    if (typeof original === 'function') {
+    if (typeof original === 'function' && !('___symbol' in original)) {
       const ___symbol = Symbol(key);
       const func = (...params: unknown[]) => {
         const f = funcMap[func.___symbol].custom;
@@ -48,7 +48,7 @@ const ___createMock = (exp: Record<string, unknown>) => {
 };
 
 const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
-  if (typeof exp !== 'object' || exp.prototype?.constructor === exp) return exp;
+  if (typeof exp !== 'object') return exp;
 
   if (typeof exp === 'function') {
     const ___symbol = Symbol(exp.name);
@@ -65,7 +65,11 @@ const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
     return Object.assign(clonedObject, exp);
   }
   Object.entries(exp).forEach(([key, original]) => {
-    if (typeof original === 'function' && original.prototype?.constructor !== original) {
+    if (
+      typeof original === 'function' &&
+      !('___symbol' in original) &&
+      (Object.getOwnPropertyDescriptors(original).length.value ?? 0) === 0
+    ) {
       const ___symbol = Symbol(key);
       const func = (...params: unknown[]) => {
         const f = funcMap[func.___symbol].custom;
@@ -76,7 +80,6 @@ const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
       Object.entries(original).forEach(([k, v]) => {
         func[k as keyof typeof func] = v;
       });
-      Object.defineProperty(func, 'name', { value: key });
       exp[key] = func;
     }
   });

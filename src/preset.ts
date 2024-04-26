@@ -13,7 +13,8 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
     {
       plugins: [
         viteMockPlugin({
-          exclude: (id) => id.includes('?v=') || options.exclude?.(id),
+          exclude: (id) => options.exclude?.(id),
+          debug: options.debug,
         }),
       ],
     },
@@ -23,5 +24,5 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
 
 export const previewAnnotations: StorybookConfig['previewAnnotations'] = (entry = []) => [
   ...entry,
-  require.resolve('./preview.js'),
+  require.resolve('./preview'),
 ];

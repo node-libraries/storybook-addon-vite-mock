@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { jest } from '@storybook/jest';
 import { ModuleMock, moduleMockParameter } from '../addons/ModuleMock/types.js';
 import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin//mock/index.js';
@@ -20,7 +21,7 @@ const hookFn = <T, Y extends unknown[]>(hook: (fn: Mock<T, Y>) => void) => {
   return fn as Mock<T, Y> & { originalValue?: unknown };
 };
 
-export const createMock = <T extends (...args: unknown[]) => unknown>(module: T): ModuleMock<T> => {
+export const createMock = <T extends (...args: any[]) => unknown>(module: T): ModuleMock<T> => {
   const fn = hookFn<ReturnType<T>, Parameters<T>>(() => {
     (fn as ModuleMock<T>).__event?.();
   });
@@ -36,11 +37,11 @@ export const createMock = <T extends (...args: unknown[]) => unknown>(module: T)
   });
 };
 
-export const getOriginal = <T extends (...args: unknown[]) => unknown>(module: T) => {
+export const getOriginal = <T extends (...args: any[]) => unknown>(module: T) => {
   return _getOriginal(module);
 };
 
-export const getMock = <T extends (...args: unknown[]) => unknown>(
+export const getMock = <T extends (...args: any[]) => unknown>(
   parameters: P,
   module: T
 ): ModuleMock<T> => {
