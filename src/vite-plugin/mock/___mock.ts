@@ -13,33 +13,42 @@ const setGlobalFunction = <
   });
 };
 
+const createFunction = (key: string, original: Function) => {
+  const ___symbol = Symbol(key);
+  const func = (...params: unknown[]) => {
+    const f = funcMap[___symbol].custom;
+    return f(...params);
+  };
+  Object.defineProperty(func, '___symbol', { value: ___symbol });
+  funcMap[___symbol] = { original, custom: original };
+  Object.entries(original).forEach(([k, v]) => {
+    (func as typeof func & { [key: string]: unknown })[k as keyof typeof func] = v;
+  });
+  Object.defineProperty(func, 'name', { value: key });
+  return func;
+};
+
+const getSymbol = (func: Function) => {
+  return Object.getOwnPropertyDescriptor(func, '___symbol')?.value;
+};
+
 const funcMap: Record<symbol, { original: Function; custom: Function }> = {};
 const ___setMock = <T extends Function>(func: T, custom: T) => {
-  const key = '___symbol' in func && (func.___symbol as symbol);
+  const key = getSymbol(func);
   if (!key) throw new Error(`Function is not a mock '${func.name}'`);
   funcMap[key] = { ...funcMap[key], custom };
   return funcMap[key].original as T;
 };
 const ___getOriginal = <T extends Function>(func: T) => {
-  const key = '___symbol' in func && (func.___symbol as symbol);
+  const key = getSymbol(func);
   if (!key) throw new Error(`Function is not a mock '${func.name}'`);
   return funcMap[key].original as T;
 };
 
 const ___createMock = (exp: Record<string, unknown>) => {
   const v = Object.entries(exp).map(([key, original]) => {
-    if (typeof original === 'function' && !('___symbol' in original)) {
-      const ___symbol = Symbol(key);
-      const func = (...params: unknown[]) => {
-        const f = funcMap[func.___symbol].custom;
-        return f(...params);
-      };
-      func.___symbol = ___symbol;
-      funcMap[___symbol] = { original, custom: original };
-      Object.entries(original).forEach(([k, v]) => {
-        func[k as keyof typeof func] = v;
-      });
-      Object.defineProperty(func, 'name', { value: key });
+    if (typeof original === 'function' && !getSymbol(original)) {
+      const func = createFunction(key, original);
       return [key, func];
     }
     return [key, original];
@@ -51,14 +60,7 @@ const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
   if (typeof exp !== 'object') return exp;
 
   if (typeof exp === 'function') {
-    const ___symbol = Symbol(exp.name);
-    const func = (...args: unknown[]) => {
-      const f = funcMap[func.___symbol].custom;
-      return f(...args);
-    };
-    func.___symbol = ___symbol;
-    funcMap[___symbol] = { original: exp, custom: exp };
-
+    const func = createFunction(exp.name, exp);
     Object.setPrototypeOf(func, Object.getPrototypeOf(exp));
     const prototype = Object.getPrototypeOf(exp);
     const clonedObject = Object.create(prototype);
@@ -67,19 +69,10 @@ const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
   Object.entries(exp).forEach(([key, original]) => {
     if (
       typeof original === 'function' &&
-      !('___symbol' in original) &&
+      !getSymbol(original) &&
       (Object.getOwnPropertyDescriptors(original).length.value ?? 0) === 0
     ) {
-      const ___symbol = Symbol(key);
-      const func = (...params: unknown[]) => {
-        const f = funcMap[func.___symbol].custom;
-        return f(...params);
-      };
-      func.___symbol = ___symbol;
-      funcMap[___symbol] = { original, custom: original };
-      Object.entries(original).forEach(([k, v]) => {
-        func[k as keyof typeof func] = v;
-      });
+      const func = createFunction(key, original);
       exp[key] = func;
     }
   });
