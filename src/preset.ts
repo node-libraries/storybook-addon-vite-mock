@@ -13,8 +13,18 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
     {
       plugins: [
         viteMockPlugin({
-          exclude: (id) => options.exclude?.(id),
-          debug: options.debug,
+          exclude: ({ id, code }) => {
+            return (
+              code
+                .split('\n')
+                .some((line) =>
+                  ['// node_modules/storybook-addon-vite-mock', '// node_modules/@storybook/'].find(
+                    (v) => line.startsWith(v)
+                  )
+                ) || options.exclude?.({ id, code })
+            );
+          },
+          debugPath: options.debugPath,
         }),
       ],
     },

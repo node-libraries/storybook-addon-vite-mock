@@ -9,6 +9,20 @@ const DEFAULT = '___default___';
 const VIRTUAL_MOCK_NAME = 'virtual:___mock.js';
 const MOCK_FILE = './mock/___mock.js';
 
+export type Options = {
+  exclude?: ({ id, code }: { id: string; code: string }) => boolean;
+  excludeFromAst?: ({ id, code, ast }: { id: string; code: string; ast: Program }) => boolean;
+  debugPath?: string;
+};
+
+const toAst = (code: string) =>
+  parse(code, {
+    sourceType: 'module',
+    ecmaVersion: 'latest',
+    allowReturnOutsideFunction: true,
+    allowImportExportEverywhere: true,
+  });
+
 function isEsmImport(ast: Program) {
   let hasEsm = false;
   simple(ast, {
@@ -32,7 +46,6 @@ function isProxy(ast: Program) {
   const imports = new Set<string>();
   const exports = new Set<string>();
 
-  // importされた名前を抽出
   simple(ast, {
     ImportSpecifier(node) {
       if ('name' in node.imported) imports.add(node.imported.name);
@@ -43,12 +56,10 @@ function isProxy(ast: Program) {
     ExportNamedDeclaration(node) {
       if (node.declaration) {
         if ('declarations' in node.declaration) {
-          // VariableDeclaration
           node.declaration.declarations.forEach((decl) => {
             if ('name' in decl.id) exports.add(decl.id.name);
           });
         } else if (node.declaration.id) {
-          // FunctionDeclaration, ClassDeclaration
           exports.add(node.declaration.id.name);
         }
       }
@@ -80,15 +91,9 @@ function convertCommonJS(ast: Program) {
     },
   });
   if (type) {
-    const header = parse(`require("${VIRTUAL_MOCK_NAME}");`, {
-      sourceType: 'module',
-      ecmaVersion: 2020,
-    });
+    const header = toAst(`require("${VIRTUAL_MOCK_NAME}");`);
     const exports = type === 'module' ? 'module.exports' : 'exports';
-    const footer = parse(`${exports} = ___createCommonMock(${exports})`, {
-      sourceType: 'module',
-      ecmaVersion: 2020,
-    });
+    const footer = toAst(`${exports} = ___createCommonMock(${exports})`);
     const index = ast.body.findIndex((v) => v.type !== 'ExpressionStatement' || !v.directive);
     ast.body.splice(Math.max(0, index), 0, ...header.body);
     ast.body.push(...footer.body);
@@ -99,125 +104,124 @@ function convertCommonJS(ast: Program) {
 function removeExport(ast: Program) {
   const exports: Record<string, string> = {};
 
-  if (ast.type === 'Program') {
-    ast.body = ast.body.flatMap((node) => {
-      if (node.type === 'ExportNamedDeclaration' && !node.source) {
-        if (
-          node.declaration?.type === 'VariableDeclaration' &&
-          node.declaration.declarations?.[0].id.type === 'Identifier'
-        ) {
-          const name = node.declaration.declarations[0].id.name;
-          exports[name] = name;
-          return [node.declaration];
-        }
-        if (
-          node.declaration?.type === 'ClassDeclaration' &&
-          node.declaration.id.type === 'Identifier'
-        ) {
-          const name = node.declaration.id.name;
-          exports[name] = name;
-          return [node.declaration];
-        }
-        if (
-          node.declaration?.type === 'FunctionDeclaration' &&
-          node.declaration.id.type === 'Identifier'
-        ) {
-          const name = node.declaration.id.name;
-          exports[name] = name;
-          return [node.declaration];
-        }
-        if (node.specifiers) {
-          const names = node.specifiers.flatMap((v: ExportSpecifier) => {
-            if (v.exported.type === 'Identifier' && v.local.type === 'Identifier') {
-              return [
-                [v.exported.name === 'default' ? DEFAULT : v.exported.name, v.local.name] as const,
-              ];
-            }
-            return [];
-          });
-          names.forEach(([name, value]) => {
-            exports[name] = value;
-          });
-        }
+  ast.body = ast.body.flatMap((node) => {
+    if (node.type === 'ExportNamedDeclaration' && !node.source) {
+      if (
+        node.declaration?.type === 'VariableDeclaration' &&
+        node.declaration.declarations?.[0].id.type === 'Identifier'
+      ) {
+        const name = node.declaration.declarations[0].id.name;
+        exports[name] = name;
+        return [node.declaration];
+      }
+      if (
+        node.declaration?.type === 'ClassDeclaration' &&
+        node.declaration.id.type === 'Identifier'
+      ) {
+        const name = node.declaration.id.name;
+        exports[name] = name;
+        return [node.declaration];
+      }
+      if (
+        node.declaration?.type === 'FunctionDeclaration' &&
+        node.declaration.id.type === 'Identifier'
+      ) {
+        const name = node.declaration.id.name;
+        exports[name] = name;
+        return [node.declaration];
+      }
+      if (node.specifiers) {
+        const names = node.specifiers.flatMap((v: ExportSpecifier) => {
+          if (v.exported.type === 'Identifier' && v.local.type === 'Identifier') {
+            return [
+              [v.exported.name === 'default' ? DEFAULT : v.exported.name, v.local.name] as const,
+            ];
+          }
+          return [];
+        });
+        names.forEach(([name, value]) => {
+          exports[name] = value;
+        });
+      }
 
+      return [];
+    }
+
+    if (node.type === 'ExportDefaultDeclaration') {
+      if (
+        (node.declaration.type === 'FunctionDeclaration' ||
+          node.declaration.type === 'ClassDeclaration') &&
+        node.declaration.id
+      ) {
+        exports[DEFAULT] = node.declaration.id.name;
+        return [node.declaration];
+      }
+      if (
+        node.declaration.type === 'ArrowFunctionExpression' ||
+        node.declaration.type === 'FunctionDeclaration' ||
+        node.declaration.type === 'Literal' ||
+        node.declaration.type === 'ClassDeclaration' ||
+        node.declaration.type === 'ObjectExpression'
+      ) {
+        exports[DEFAULT] = DEFAULT;
+        return {
+          type: 'VariableDeclaration',
+          declarations: [
+            {
+              type: 'VariableDeclarator',
+              id: {
+                type: 'Identifier',
+                name: DEFAULT,
+                start: node.declaration.start,
+                end: node.declaration.end,
+              },
+              init: node.declaration as never,
+
+              start: node.start,
+              end: node.end,
+            },
+          ],
+          kind: 'const',
+          start: node.start,
+          end: node.end,
+        };
+      }
+      if (
+        node.declaration.type === 'CallExpression' &&
+        node.declaration.callee.type === 'Identifier'
+      ) {
+        exports[DEFAULT] = DEFAULT;
+        return {
+          type: 'VariableDeclaration',
+          declarations: [
+            {
+              type: 'VariableDeclarator',
+              id: {
+                type: 'Identifier',
+                name: DEFAULT,
+                start: node.declaration.start,
+                end: node.declaration.end,
+              },
+              init: node.declaration as never,
+
+              start: node.start,
+              end: node.end,
+            },
+          ],
+          kind: 'const',
+          start: node.start,
+          end: node.end,
+        };
+      }
+      if (node.declaration.type === 'Identifier') {
+        exports[DEFAULT] = node.declaration.name;
         return [];
       }
+      throw new Error('Not implemented');
+    }
+    return [node];
+  });
 
-      if (node.type === 'ExportDefaultDeclaration') {
-        if (
-          (node.declaration.type === 'FunctionDeclaration' ||
-            node.declaration.type === 'ClassDeclaration') &&
-          node.declaration.id
-        ) {
-          exports[DEFAULT] = node.declaration.id.name;
-          return [node.declaration];
-        }
-        if (
-          node.declaration.type === 'ArrowFunctionExpression' ||
-          node.declaration.type === 'FunctionDeclaration' ||
-          node.declaration.type === 'Literal' ||
-          node.declaration.type === 'ClassDeclaration' ||
-          node.declaration.type === 'ObjectExpression'
-        ) {
-          exports[DEFAULT] = DEFAULT;
-          return {
-            type: 'VariableDeclaration',
-            declarations: [
-              {
-                type: 'VariableDeclarator',
-                id: {
-                  type: 'Identifier',
-                  name: DEFAULT,
-                  start: node.declaration.start,
-                  end: node.declaration.end,
-                },
-                init: node.declaration as never,
-
-                start: node.start,
-                end: node.end,
-              },
-            ],
-            kind: 'const',
-            start: node.start,
-            end: node.end,
-          };
-        }
-        if (
-          node.declaration.type === 'CallExpression' &&
-          node.declaration.callee.type === 'Identifier'
-        ) {
-          exports[DEFAULT] = DEFAULT;
-          return {
-            type: 'VariableDeclaration',
-            declarations: [
-              {
-                type: 'VariableDeclarator',
-                id: {
-                  type: 'Identifier',
-                  name: DEFAULT,
-                  start: node.declaration.start,
-                  end: node.declaration.end,
-                },
-                init: node.declaration as never,
-
-                start: node.start,
-                end: node.end,
-              },
-            ],
-            kind: 'const',
-            start: node.start,
-            end: node.end,
-          };
-        }
-        if (node.declaration.type === 'Identifier') {
-          exports[DEFAULT] = node.declaration.name;
-          return [];
-        }
-        throw new Error('Not implemented');
-      }
-      return [node];
-    });
-  }
   return exports;
 }
 
@@ -297,16 +301,13 @@ function isCommonJSWrap(ast: Program) {
   return false;
 }
 
-export const viteMockPlugin = (props?: {
-  debug?: string;
-  exclude?: (id: string) => boolean;
-}): Plugin => {
-  const { debug, exclude } = props ?? {};
-  if (debug) {
-    if (fs.existsSync(debug)) {
-      fs.rmSync(debug, { recursive: true });
+export const viteMockPlugin = (props?: Options): Plugin => {
+  const { debugPath, exclude, excludeFromAst } = props ?? {};
+  if (debugPath) {
+    if (fs.existsSync(debugPath)) {
+      fs.rmSync(debugPath, { recursive: true });
     }
-    fs.mkdirSync(debug, { recursive: true });
+    fs.mkdirSync(debugPath, { recursive: true });
   }
   return {
     name: 'code-out',
@@ -323,64 +324,54 @@ export const viteMockPlugin = (props?: {
       }
     },
     transform(code, id) {
-      //ts||js
-      if (!id.match(/\.(ts|js)(\?.*)?$/) || id === VIRTUAL_MOCK_NAME || exclude?.(id)) {
-        return null;
-      }
-      if (code.split('\n').some((line) => line.startsWith('// node_modules/@storybook/'))) {
+      if (!id.match(/\.(ts|js)(\?.*)?$/) || id === VIRTUAL_MOCK_NAME || exclude?.({ id, code })) {
         return null;
       }
 
-      const ast = parse(code, { sourceType: 'module', ecmaVersion: 'latest' });
+      const ast = toAst(code);
+      if (excludeFromAst?.({ id, code, ast })) return null;
+
       if (isEsmImport(ast) || isCommonJSWrap(ast) || isProxy(ast)) {
         return null;
       }
-      const p = path.relative(
+      const normalizePath = path.relative(
         path.normalize(path.resolve('./')),
         path.normalize(id.replaceAll('?', '-').replaceAll('\0', ''))
       );
-      const name = p
+      const name = normalizePath
         .replaceAll('/', '-')
         .replaceAll('\\', '-')
         .replaceAll(':', '-')
         .replaceAll('?', '-');
       try {
-        if (debug) {
-          fs.writeFileSync(path.resolve(debug, name), code);
-          fs.writeFileSync(path.resolve(debug, `${name}.json`), JSON.stringify(ast, null, 2));
+        if (debugPath) {
+          fs.writeFileSync(path.resolve(debugPath, name), code);
+          fs.writeFileSync(path.resolve(debugPath, `${name}.json`), JSON.stringify(ast, null, 2));
         }
 
         const exports = removeExport(ast);
         if (Object.keys(exports).length) {
+          const isDefault = Object.keys(exports).find((v) => v === DEFAULT);
           const namedExports = Object.entries(exports).filter(([name]) => name !== DEFAULT);
           if (Object.keys(exports).length) {
-            const insertMockAst = parse(
-              `import {} from "${VIRTUAL_MOCK_NAME}";
-            return ___createMock({${Object.entries(exports)
-              .map(([name, value]) => (name === value ? name : `${name}: ${value}`))
-              .join(', ')}});
-            `,
-              {
-                sourceType: 'module',
-                ecmaVersion: 2020,
-                allowReturnOutsideFunction: true,
-                allowImportExportEverywhere: true,
-              }
-            );
+            const insertMockCode = [`import "${VIRTUAL_MOCK_NAME}";`];
+            if (isDefault && namedExports.length === 0)
+              insertMockCode.push(`return {${DEFAULT}:___createMock(${exports[DEFAULT]})};`);
+            else
+              insertMockCode.push(
+                `return ___createMock({${Object.entries(exports)
+                  .map(([name, value]) => (name === value ? name : `${name}: ${value}`))
+                  .join(', ')}});`
+              );
+            const insertMockAst = toAst(insertMockCode.join('\n'));
+
             ast.body.push(...insertMockAst.body);
             convertPrivate(ast);
 
-            const exportAst = parse(
+            const exportAst = toAst(
               (namedExports.length
                 ? `export const {${namedExports.map(([name]) => name).join(', ')}} = ___exports;`
-                : '') +
-                (Object.keys(exports).find((v) => v === DEFAULT)
-                  ? `\nexport default ___exports.${DEFAULT}`
-                  : ''),
-              {
-                sourceType: 'module',
-                ecmaVersion: 2020,
-              }
+                : '') + (isDefault ? `\nexport default ___exports.${DEFAULT}` : '')
             );
             ast.body.push(...exportAst.body);
           }
@@ -388,13 +379,16 @@ export const viteMockPlugin = (props?: {
           convertCommonJS(ast);
         }
         const newCode = generate(ast);
-        if (debug) {
-          fs.writeFileSync(path.resolve(debug, `${name}-out.js`), newCode);
+        if (debugPath) {
+          fs.writeFileSync(path.resolve(debugPath, `${name}-out.js`), newCode);
         }
         return newCode;
       } catch (e) {
-        if (debug) {
-          fs.writeFileSync(path.resolve(debug, `${name}-error.json`), JSON.stringify(ast, null, 2));
+        if (debugPath) {
+          fs.writeFileSync(
+            path.resolve(debugPath, `${name}-error.json`),
+            JSON.stringify(ast, null, 2)
+          );
         }
         console.error(e);
       }

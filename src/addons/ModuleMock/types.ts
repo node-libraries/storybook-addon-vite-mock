@@ -1,6 +1,6 @@
-import type { Mock } from "jest-mock";
+import type { Mock } from 'jest-mock';
 
-export const ADDON_ID = "storybook-addon-module-mock";
+export const ADDON_ID = 'storybook-addon-module-mock';
 export const TAB_ID = `${ADDON_ID}/tab`;
 
 export type ModuleType<T> = {
@@ -23,4 +23,4 @@ export type moduleMockParameter = {
   };
 };
 
-export type moduleMock = Pick<moduleMockParameter["moduleMock"], "mock">;
+export type moduleMock = Pick<moduleMockParameter['moduleMock'], 'mock'>;

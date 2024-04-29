@@ -8,12 +8,12 @@ import type { Addon_RenderOptions } from '@storybook/types';
 const theme = {
   scheme: 'custom',
   base00: '#ffffff',
-  base01: '#aeb8c4', // keyの色
-  base02: '#9b9b9b', // テキスト色
-  base03: '#9b9a9a', // 配列/オブジェクトの区切り線の色
+  base01: '#aeb8c4',
+  base02: '#9b9b9b',
+  base03: '#9b9a9a',
   base04: '#909090',
-  base05: '#1e1e1e', // テキストの色
-  base06: '#efefef', // 配列/オブジェクトの背景色
+  base05: '#1e1e1e',
+  base06: '#efefef',
   base07: '#9e9e9e',
   base08: '#f44336',
   base09: '#ff9800',

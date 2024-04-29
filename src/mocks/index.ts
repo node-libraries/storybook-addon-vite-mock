@@ -3,10 +3,9 @@ import { jest } from '@storybook/jest';
 import { ModuleMock, moduleMockParameter } from '../addons/ModuleMock/types.js';
 import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin//mock/index.js';
 import type { Parameters as P } from '@storybook/react';
-import type { Mock } from 'jest-mock';
 
-const hookFn = <T, Y extends unknown[]>(hook: (fn: Mock<T, Y>) => void) => {
-  const fnSrc = jest.fn<T, Y>();
+const hookFn = <T, Y extends unknown[]>(hook: (fn: jest.Mock<T, Y>) => void) => {
+  const fnSrc = jest.fn<T, Y>() as jest.Mock<T, Y>;
   const fn = Object.assign((...args: unknown[]): unknown => {
     const result = fnSrc(...(args as Y));
     hook(fnSrc);
@@ -18,7 +17,7 @@ const hookFn = <T, Y extends unknown[]>(hook: (fn: Mock<T, Y>) => void) => {
       return fnSrc.mock;
     },
   });
-  return fn as Mock<T, Y> & { originalValue?: unknown };
+  return fn as jest.Mock<T, Y> & { originalValue?: unknown };
 };
 
 export const createMock = <T extends (...args: any[]) => unknown>(module: T): ModuleMock<T> => {
@@ -30,11 +29,12 @@ export const createMock = <T extends (...args: any[]) => unknown>(module: T): Mo
   fn.mockRestore = () => {
     restoreMock(module);
   };
+
   return Object.assign(fn, {
     __module: module,
     __name: `${String(original.name)}`,
     __original: original as T,
-  });
+  }) as ModuleMock<T>;
 };
 
 export const getOriginal = <T extends (...args: any[]) => unknown>(module: T) => {

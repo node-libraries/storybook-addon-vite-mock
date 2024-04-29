@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { JSONTree } from 'react-json-tree';
 import { ADDON_ID, TAB_ID } from './types.js';
 import type { Addon_RenderOptions } from '@storybook/types';
-import type { MockInstance } from 'jest-mock';
+import type { jest } from '@storybook/jest';
 const theme = {
   scheme: 'custom',
   base00: '#ffffff',
@@ -27,7 +27,7 @@ const theme = {
 
 const Panel = () => {
   const [mocks, setMocks] = useState<
-    [string, MockInstance<unknown, unknown[]>['mock']][] | undefined
+    [string, jest.MockInstance<unknown, unknown[]>['mock']][] | undefined
   >(undefined);
   useChannel({
     [ADDON_ID]: (mocks) => {
