@@ -67,13 +67,11 @@ const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
     return Object.assign(clonedObject, exp);
   }
   Object.entries(exp).forEach(([key, original]) => {
-    if (
-      typeof original === 'function' &&
-      !getSymbol(original) &&
-      (Object.getOwnPropertyDescriptors(original).length.value ?? 0) === 0
-    ) {
-      const func = createFunction(key, original);
-      exp[key] = func;
+    if (typeof original === 'function' && !getSymbol(original)) {
+      if (!original.prototype || Object.keys(original.prototype).length === 0) {
+        const func = createFunction(key, original);
+        exp[key] = func;
+      }
     }
   });
   return exp;

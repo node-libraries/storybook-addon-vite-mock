@@ -4,6 +4,7 @@ import { AssignmentExpression, ExportSpecifier, Program, Statement, parse } from
 import { simple } from 'acorn-walk';
 import { generate } from 'astring';
 import { Plugin } from 'vite';
+import { SourceMapGenerator } from 'source-map';
 
 const DEFAULT = '___default___';
 const VIRTUAL_MOCK_NAME = 'virtual:___mock.js';
@@ -15,13 +16,35 @@ export type Options = {
   debugPath?: string;
 };
 
-const toAst = (code: string) =>
-  parse(code, {
+function setAstZero(ast: Program): void {
+  const zero = (node: { start: number; end: number }) => {
+    node.start = node.end = 0;
+  };
+  simple(ast, {
+    Identifier: zero,
+    Literal: zero,
+    Program: zero,
+    FunctionDeclaration: zero,
+    VariableDeclaration: zero,
+    ClassDeclaration: zero,
+    ImportDeclaration: zero,
+    ExportNamedDeclaration: zero,
+    ExportDefaultDeclaration: zero,
+    ExportAllDeclaration: zero,
+    MethodDefinition: zero,
+  });
+}
+
+const toAst = (code: string) => {
+  const ast = parse(code, {
     sourceType: 'module',
     ecmaVersion: 'latest',
     allowReturnOutsideFunction: true,
     allowImportExportEverywhere: true,
   });
+  setAstZero(ast);
+  return ast;
+};
 
 function isEsmImport(ast: Program) {
   let hasEsm = false;
@@ -177,8 +200,8 @@ function removeExport(ast: Program) {
               },
               init: node.declaration as never,
 
-              start: node.start,
-              end: node.end,
+              start: node.declaration.start,
+              end: node.declaration.end,
             },
           ],
           kind: 'const',
@@ -203,9 +226,8 @@ function removeExport(ast: Program) {
                 end: node.declaration.end,
               },
               init: node.declaration as never,
-
-              start: node.start,
-              end: node.end,
+              start: node.declaration.start,
+              end: node.declaration.end,
             },
           ],
           kind: 'const',
@@ -242,8 +264,8 @@ const convertPrivate = (ast: Program) => {
         id: {
           type: 'Identifier',
           name: '___exports',
-          start: ast.body[0].start,
-          end: ast.body[0].end,
+          start: 0,
+          end: 0,
         },
         init: {
           type: 'CallExpression',
@@ -254,8 +276,8 @@ const convertPrivate = (ast: Program) => {
             body: {
               type: 'BlockStatement',
               body: exports as Statement[],
-              start: ast.body[0].start,
-              end: ast.body[0].end,
+              start: 0,
+              end: 0,
             },
             start: ast.body[0].start,
             end: ast.body[0].end,
@@ -267,13 +289,13 @@ const convertPrivate = (ast: Program) => {
           end: ast.body[0].end,
           optional: true,
         },
-        start: ast.body[0].start,
-        end: ast.body[0].end,
+        start: 0,
+        end: 0,
       },
     ],
     kind: 'const',
-    start: ast.body[0].start,
-    end: ast.body[0].end,
+    start: 0,
+    end: 0,
   };
 
   ast.body = [...imports, node];
@@ -356,7 +378,12 @@ export const viteMockPlugin = (props?: Options): Plugin => {
           if (Object.keys(exports).length) {
             const insertMockCode = [`import "${VIRTUAL_MOCK_NAME}";`];
             if (isDefault && namedExports.length === 0)
-              insertMockCode.push(`return {${DEFAULT}:___createMock(${exports[DEFAULT]})};`);
+              insertMockCode.push(
+                `
+            if(typeof ${exports[DEFAULT]} === 'function')
+              return ___createMock({${DEFAULT}:${exports[DEFAULT]}});
+            return {${DEFAULT}:___createMock(${exports[DEFAULT]})};`
+              );
             else
               insertMockCode.push(
                 `return ___createMock({${Object.entries(exports)
@@ -376,13 +403,17 @@ export const viteMockPlugin = (props?: Options): Plugin => {
             ast.body.push(...exportAst.body);
           }
         } else {
-          convertCommonJS(ast);
+          if (!convertCommonJS(ast)) return null;
         }
-        const newCode = generate(ast);
+        const sourceMapGenerator = new SourceMapGenerator({
+          file: normalizePath,
+        });
+        const newCode = generate(ast, { sourceMap: sourceMapGenerator });
         if (debugPath) {
           fs.writeFileSync(path.resolve(debugPath, `${name}-out.js`), newCode);
         }
-        return newCode;
+        const sourceMap = sourceMapGenerator.toString();
+        return { code: newCode, map: sourceMap };
       } catch (e) {
         if (debugPath) {
           fs.writeFileSync(
