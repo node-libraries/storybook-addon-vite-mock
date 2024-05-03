@@ -3,8 +3,8 @@ import path from 'path';
 import { AssignmentExpression, ExportSpecifier, Program, Statement, parse } from 'acorn';
 import { simple } from 'acorn-walk';
 import { generate } from 'astring';
-import { Plugin } from 'vite';
 import { SourceMapGenerator } from 'source-map';
+import { Plugin } from 'vite';
 
 const DEFAULT = '___default___';
 const VIRTUAL_MOCK_NAME = 'virtual:___mock.js';

@@ -1,23 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { jest } from '@storybook/jest';
+
+import { Mock, fn } from '@storybook/test';
 import { ModuleMock, moduleMockParameter } from '../addons/ModuleMock/types.js';
 import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin//mock/index.js';
-import type { Parameters as P } from '@storybook/react';
 
-const hookFn = <T, Y extends unknown[]>(hook: (fn: jest.Mock<T, Y>) => void) => {
-  const fnSrc = jest.fn<T, Y>() as jest.Mock<T, Y>;
-  const fn = Object.assign((...args: unknown[]): unknown => {
+interface P {
+  [name: string]: unknown;
+}
+
+const hookFn = <T, Y extends unknown[]>(hook: (fn1: Mock<Y, T>) => void) => {
+  const fnSrc = fn();
+  const func = Object.assign((...args: unknown[]): unknown => {
     const result = fnSrc(...(args as Y));
     hook(fnSrc);
     return result;
   }, fnSrc);
-  fn.bind(fnSrc);
-  Object.defineProperty(fn, 'mock', {
+  func.bind(fnSrc);
+  Object.defineProperty(func, '_isMockFunction', { value: true });
+  Object.defineProperty(func, 'mock', {
     get: () => {
       return fnSrc.mock;
     },
   });
-  return fn as jest.Mock<T, Y> & { originalValue?: unknown };
+  return func as Mock<Y, T> & { originalValue?: unknown };
 };
 
 export const createMock = <T extends (...args: any[]) => unknown>(module: T): ModuleMock<T> => {
