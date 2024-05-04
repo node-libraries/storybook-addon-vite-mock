@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Mock, fn } from '@storybook/test';
+import { Mock, fn, mocks } from '@storybook/test';
 import { ModuleMock, moduleMockParameter } from '../addons/ModuleMock/types.js';
 import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin//mock/index.js';
 
@@ -10,6 +10,8 @@ interface P {
 
 const hookFn = <T, Y extends unknown[]>(hook: (fn1: Mock<Y, T>) => void) => {
   const fnSrc = fn();
+  mocks.delete(fnSrc);
+
   const func = Object.assign((...args: unknown[]): unknown => {
     const result = fnSrc(...(args as Y));
     hook(fnSrc);
@@ -38,7 +40,6 @@ export const createMock = <T extends (...args: any[]) => unknown>(module: T): Mo
   return Object.assign(fn, {
     __module: module,
     __name: `${String(original.name)}`,
-    __original: original as T,
   }) as ModuleMock<T>;
 };
 

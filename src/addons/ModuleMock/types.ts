@@ -7,7 +7,6 @@ export type ModuleType<T> = {
   __module: T;
   __event?: () => void;
   __name: string;
-  __original: unknown;
 };
 export type Mocks = (Mock & ModuleType<unknown>)[];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

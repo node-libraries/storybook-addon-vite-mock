@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 export type ___setMock = typeof ___setMock;
 export type ___getOriginal = typeof ___getOriginal;
 
