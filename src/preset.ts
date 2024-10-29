@@ -18,9 +18,12 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
               code
                 .split('\n')
                 .some((line) =>
-                  ['// node_modules/storybook-addon-vite-mock', '// node_modules/@storybook/'].find(
-                    (v) => line.startsWith(v)
-                  )
+                  [
+                    '// node_modules/storybook-addon-vite-mock',
+                    '// node_modules/@storybook/',
+                    '// node_modules/.pnpm/storybook-addon-vite-mock',
+                    '// node_modules/.pnpm/@storybook/',
+                  ].find((v) => line.startsWith(v))
                 ) || options.exclude?.({ id, code })
             );
           },

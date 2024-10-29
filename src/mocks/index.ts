@@ -14,7 +14,7 @@ const hookFn = <T, Y extends unknown[]>(hook: (fn1: Mock<Y, T>) => void) => {
 
   const func = Object.assign((...args: unknown[]): unknown => {
     const result = fnSrc(...(args as Y));
-    hook(fnSrc);
+    hook(fnSrc as never);
     return result;
   }, fnSrc);
   func.bind(fnSrc);

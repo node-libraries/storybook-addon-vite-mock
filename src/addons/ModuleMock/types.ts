@@ -1,6 +1,6 @@
 import type { Mock } from '@storybook/test';
 
-export const ADDON_ID = 'storybook-addon-module-mock';
+export const ADDON_ID = 'storybook-addon-vite-mock';
 export const TAB_ID = `${ADDON_ID}/tab`;
 
 export type ModuleType<T> = {
