@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Mock, fn, mocks } from '@storybook/test';
+import { Mock, fn, mocks } from 'storybook/test';
 import { ModuleMock, moduleMockParameter } from '../addons/ModuleMock/types.js';
 import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin//mock/index.js';
 
@@ -8,12 +8,12 @@ interface P {
   [name: string]: unknown;
 }
 
-const hookFn = <T, Y extends unknown[]>(hook: (fn1: Mock<Y, T>) => void) => {
+const hookFn = <T extends (...args: any[]) => any>(hook: (fn1: Mock<T>) => void) => {
   const fnSrc = fn();
   mocks.delete(fnSrc);
 
   const func = Object.assign((...args: unknown[]): unknown => {
-    const result = fnSrc(...(args as Y));
+    const result = fnSrc(...(args as Parameters<T>));
     hook(fnSrc as never);
     return result;
   }, fnSrc);
@@ -24,11 +24,11 @@ const hookFn = <T, Y extends unknown[]>(hook: (fn1: Mock<Y, T>) => void) => {
       return fnSrc.mock;
     },
   });
-  return func as Mock<Y, T> & { originalValue?: unknown };
+  return func as Mock<T> & { originalValue?: unknown };
 };
 
 export const createMock = <T extends (...args: any[]) => unknown>(module: T): ModuleMock<T> => {
-  const fn = hookFn<ReturnType<T>, Parameters<T>>(() => {
+  const fn = hookFn<T>(() => {
     (fn as ModuleMock<T>).__event?.();
   });
 

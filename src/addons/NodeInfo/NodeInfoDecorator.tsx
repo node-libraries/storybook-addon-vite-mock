@@ -1,6 +1,6 @@
-import { useChannel, useEffect } from '@storybook/preview-api';
 import { Decorator } from '@storybook/react';
 import React from 'react';
+import { useChannel, useEffect } from 'storybook/preview-api';
 import { ADDON_ID } from './types.js';
 
 const getDisplayValue = (element: Element) =>
@@ -82,7 +82,7 @@ export const NodeInfoDecorator: Decorator = (Story) => {
             placeholder: element.getAttribute('placeholder'),
             text: element.textContent?.trim(),
           };
-        item && emit(ADDON_ID, item);
+        if (item) emit(ADDON_ID, item);
       }
     };
     document.addEventListener('mousemove', handleMouseMove);

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { AssignmentExpression, ExportSpecifier, Program, Statement, parse } from 'acorn';
 import { simple } from 'acorn-walk';
 import { generate } from 'astring';
@@ -332,7 +333,7 @@ export const viteMockPlugin = (props?: Options): Plugin => {
     fs.mkdirSync(debugPath, { recursive: true });
   }
   return {
-    name: 'code-out',
+    name: 'storybook-addon-vite-mock',
     resolveId(id) {
       if (id === VIRTUAL_MOCK_NAME) {
         return VIRTUAL_MOCK_NAME;
@@ -341,7 +342,10 @@ export const viteMockPlugin = (props?: Options): Plugin => {
     },
     load(id) {
       if (id === VIRTUAL_MOCK_NAME) {
-        const code = fs.readFileSync(path.resolve(__dirname, MOCK_FILE), 'utf-8');
+        const code = fs.readFileSync(
+          path.resolve(path.dirname(fileURLToPath(import.meta.url)), MOCK_FILE),
+          'utf-8'
+        );
         return code;
       }
     },
@@ -368,7 +372,14 @@ export const viteMockPlugin = (props?: Options): Plugin => {
       try {
         if (debugPath) {
           fs.writeFileSync(path.resolve(debugPath, name), code);
-          fs.writeFileSync(path.resolve(debugPath, `${name}.json`), JSON.stringify(ast, null, 2));
+          fs.writeFileSync(
+            path.resolve(debugPath, `${name}.json`),
+            JSON.stringify(
+              ast,
+              (_, value) => (typeof value === 'bigint' ? Number(value) : value),
+              2
+            )
+          );
         }
 
         const exports = removeExport(ast);

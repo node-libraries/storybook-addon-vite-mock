@@ -1,6 +1,6 @@
 # storybook-addon-vite-mock
 
-Provides module mocking functionality like `jest.mock` on Storybook.
+Provides module mocking functionality like `jest.mock` on Storybook@9.
 
 ![](https://raw.githubusercontent.com/ReactLibraries/storybook-addon-module-mock/master/document/image/image01.png)  
 ![](https://raw.githubusercontent.com/ReactLibraries/storybook-addon-module-mock/master/document/image/image02.png)
@@ -8,7 +8,7 @@ Provides module mocking functionality like `jest.mock` on Storybook.
 ## usage
 
 Added 'storybook-addon-vite-mock' to Storybook addons.
-Only works if Webpack is used in the Builder.
+Only works if Vite is used in the Builder.
 
 - Sample code  
   https://github.com/SoraKumo001/storybook-addon-vite-mock-test

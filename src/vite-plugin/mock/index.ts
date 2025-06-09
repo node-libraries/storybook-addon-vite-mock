@@ -4,6 +4,7 @@ export const setMock = (globalThis as typeof globalThis & { ___setMock: ___setMo
 export const getOriginal = (globalThis as typeof globalThis & { ___getOriginal: ___getOriginal })
   .___getOriginal;
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export const restoreMock = <T extends Function>(func: T) => {
   const original = getOriginal(func);
   setMock(func, original);

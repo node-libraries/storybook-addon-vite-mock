@@ -1,7 +1,10 @@
+import { createRequire } from 'module';
+import path from 'path';
 import { mergeConfig } from 'vite';
 import { AddonOptions } from './types.js';
 import { viteMockPlugin } from './vite-plugin/index.js';
-import type { Options } from '@storybook/types';
+import type { Options } from 'storybook/internal/types';
+const require = createRequire(import.meta.url);
 
 export const managerEntries = (entry: string[] = []): string[] => [
   ...entry,
@@ -14,6 +17,8 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
       plugins: [
         viteMockPlugin({
           exclude: ({ id, code }) => {
+            const p = path.dirname(id);
+            if (['@storybook', 'storybook@'].some((v) => p.includes(v))) return true;
             return (
               code
                 .split('\n')
@@ -21,8 +26,10 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
                   [
                     '// node_modules/storybook-addon-vite-mock',
                     '// node_modules/@storybook/',
+                    '// node_modules/storybook',
                     '// node_modules/.pnpm/storybook-addon-vite-mock',
                     '// node_modules/.pnpm/@storybook/',
+                    '// node_modules/.pnpm/storybook',
                   ].find((v) => line.startsWith(v))
                 ) || options.exclude?.({ id, code })
             );

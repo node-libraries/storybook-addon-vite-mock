@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-function-type */
 export type ___setMock = typeof ___setMock;
 export type ___getOriginal = typeof ___getOriginal;
 
@@ -14,6 +15,11 @@ const setGlobalFunction = <
 };
 
 const createFunction = (key: string, original: Function) => {
+  if (
+    Object.getOwnPropertyDescriptor(original, 'prototype') &&
+    Object.getOwnPropertyDescriptor(original, 'name')?.value !== ''
+  )
+    return original;
   const ___symbol = Symbol(key);
   const func = (...params: unknown[]) => {
     const f = funcMap[___symbol].custom;
@@ -39,6 +45,7 @@ const ___setMock = <T extends Function>(func: T, custom: T) => {
   funcMap[key] = { ...funcMap[key], custom };
   return funcMap[key].original as T;
 };
+
 const ___getOriginal = <T extends Function>(func: T) => {
   const key = getSymbol(func);
   if (!key) throw new Error(`Function is not a mock '${func.name}'`);
