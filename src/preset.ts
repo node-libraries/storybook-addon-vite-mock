@@ -19,20 +19,21 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
           exclude: ({ id, code }) => {
             const p = path.dirname(id);
             if (['@storybook', 'storybook@'].some((v) => p.includes(v))) return true;
-            return (
+            const exclude =
               code
                 .split('\n')
                 .some((line) =>
                   [
+                    '// node_modules/.cache',
                     '// node_modules/storybook-addon-vite-mock',
-                    '// node_modules/@storybook/',
-                    '// node_modules/storybook',
+                    '// node_modules/@storybook',
+                    '// node_modules/storybook@',
                     '// node_modules/.pnpm/storybook-addon-vite-mock',
-                    '// node_modules/.pnpm/@storybook/',
-                    '// node_modules/.pnpm/storybook',
+                    '// node_modules/.pnpm/@storybook',
+                    '// node_modules/.pnpm/storybook@',
                   ].find((v) => line.startsWith(v))
-                ) || options.exclude?.({ id, code })
-            );
+                ) || options.exclude?.({ id, code });
+            return exclude;
           },
           debugPath: options.debugPath,
         }),
