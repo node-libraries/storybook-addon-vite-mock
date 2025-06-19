@@ -1,6 +1,11 @@
 # storybook-addon-vite-mock
 
-Provides module mocking functionality like `jest.mock` on Storybook@9.
+[![](https://img.shields.io/npm/l/storybook-addon-vite-mock)](https://www.npmjs.com/package/storybook-addon-vite-mock)
+[![](https://img.shields.io/npm/v/storybook-addon-vite-mock)](https://www.npmjs.com/package/storybook-addon-vite-mock)
+[![](https://img.shields.io/npm/dw/storybook-addon-vite-mock)](https://www.npmjs.com/package/storybook-addon-vite-mock)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/node-libraries/storybook-addon-vite-mock)
+
+Provides module mocking functionality like `jest.mock` on Storybook@9
 
 ![](https://raw.githubusercontent.com/ReactLibraries/storybook-addon-module-mock/master/document/image/image01.png)  
 ![](https://raw.githubusercontent.com/ReactLibraries/storybook-addon-module-mock/master/document/image/image02.png)
@@ -10,8 +15,14 @@ Provides module mocking functionality like `jest.mock` on Storybook@9.
 Added 'storybook-addon-vite-mock' to Storybook addons.
 Only works if Vite is used in the Builder.
 
-- Sample code  
-  https://github.com/SoraKumo001/storybook-addon-vite-mock-test
+### Addon that is confirmed to work
+
+- @storybook/react-vite
+- @storybook/nextjs-vite
+
+### Sample code
+
+https://github.com/SoraKumo001/storybook-addon-vite-mock-test
 
 ## Addon options
 
@@ -25,23 +36,26 @@ If include is omitted, all modules are covered.
     {
       name: 'storybook-addon-vite-mock',
       options: {
-        //ignore 'abc.js'
-        exclude: (id)=>id==="abc.js",
-      }
+        exclude: ({
+          id,
+          // code // Code in build
+        }) => id.includes(".stories."),
+      },
     }
   ],
 ```
 
-### Storybook@8 & @storybook/react-vite
+### Storybook@9 & @storybook/react-vite
 
 - .storybook/main.ts
 
 ```ts
 import { mergeConfig } from 'vite';
 import { viteMockPlugin } from 'storybook-addon-vite-mock';
+import type { StorybookConfig } from '@storybook/react-vite';
+// import type { StorybookConfig } from "@storybook/nextjs-vite";
 
-/** @type { import('@storybook/react-vite').StorybookConfig } */
-const config = {
+const config: StorybookConfig = {
   stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   addons: [
     '@storybook/addon-onboarding',
@@ -53,10 +67,8 @@ const config = {
   ],
   framework: {
     name: '@storybook/react-vite',
+    // name: "@storybook/nextjs-vite",
     options: {},
-  },
-  docs: {
-    autodocs: 'tag',
   },
 };
 export default config;

@@ -33,6 +33,10 @@ export const viteFinal = async (config: object, options: Options & AddonOptions)
                     '// node_modules/.pnpm/storybook@',
                   ].find((v) => line.startsWith(v))
                 ) || options.exclude?.({ id, code });
+            // if (!exclude) {
+            //   console.log('--', p);
+            //   console.log(code.split('\n').filter((v) => v.includes('// node_modules')));
+            // }
             return exclude;
           },
           debugPath: options.debugPath,

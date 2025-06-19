@@ -77,7 +77,9 @@ const ___createCommonMock = (exp: NodeJS.Module['exports']) => {
     if (typeof original === 'function' && !getSymbol(original)) {
       if (!original.prototype || Object.keys(original.prototype).length === 0) {
         const func = createFunction(key, original);
-        exp[key] = func;
+        try {
+          exp[key] = func;
+        } catch {}
       }
     }
   });
