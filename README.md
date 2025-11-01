@@ -5,7 +5,7 @@
 [![](https://img.shields.io/npm/dw/storybook-addon-vite-mock)](https://www.npmjs.com/package/storybook-addon-vite-mock)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/node-libraries/storybook-addon-vite-mock)
 
-Provides module mocking functionality like `jest.mock` on Storybook@9
+Provides module mocking functionality like `jest.mock` on Storybook@10
 
 ![](https://raw.githubusercontent.com/ReactLibraries/storybook-addon-module-mock/master/document/image/image01.png)  
 ![](https://raw.githubusercontent.com/ReactLibraries/storybook-addon-module-mock/master/document/image/image02.png)
