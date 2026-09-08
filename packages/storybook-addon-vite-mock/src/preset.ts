@@ -12,6 +12,18 @@ export const managerEntries = (entry: string[] = []): string[] => [
   require.resolve('./manager.js'),
 ];
 
+const IGNORED_PATH_SEGMENTS = ['@storybook', 'storybook@', 'vite-plugin-storybook'];
+const IGNORED_COMMENT_PREFIXES = [
+  '// node_modules/.cache',
+  '// node_modules/storybook-addon-vite-mock',
+  '// node_modules/@storybook',
+  '// node_modules/storybook@',
+  '// node_modules/.pnpm/storybook-addon-vite-mock',
+  '// node_modules/.pnpm/@storybook',
+  '// node_modules/.pnpm/storybook@',
+  '// node_modules/.pnpm/vite-plugin-storybook',
+];
+
 export const viteFinal: ViteFinal = async (config, options) => {
   const o = options as Options & AddonOptions;
   const { mergeConfig } = await import('vite');
@@ -20,23 +32,11 @@ export const viteFinal: ViteFinal = async (config, options) => {
       viteMockPlugin({
         exclude: ({ id, code }) => {
           const p = path.dirname(id);
-          if (['@storybook', 'storybook@', 'vite-plugin-storybook'].some((v) => p.includes(v))) return true;
-          const exclude =
-            code
-              .split('\n')
-              .some((line) =>
-                [
-                  '// node_modules/.cache',
-                  '// node_modules/storybook-addon-vite-mock',
-                  '// node_modules/@storybook',
-                  '// node_modules/storybook@',
-                  '// node_modules/.pnpm/storybook-addon-vite-mock',
-                  '// node_modules/.pnpm/@storybook',
-                  '// node_modules/.pnpm/storybook@',
-                  '// node_modules/.pnpm/vite-plugin-storybook',
-                ].find((v) => line.startsWith(v))
-              ) || o.exclude?.({ id, code });
-          return exclude;
+          if (IGNORED_PATH_SEGMENTS.some((v) => p.includes(v))) return true;
+          return (
+            IGNORED_COMMENT_PREFIXES.some((prefix) => code.includes(prefix)) ||
+            Boolean(o.exclude?.({ id, code }))
+          );
         },
         debugPath: o.debugPath,
       }),

@@ -56,21 +56,20 @@ const render = ({ active }: Partial<Addon_RenderOptions>) => (
   </TabWrapper>
 );
 
-addons.register(ADDON_ID, (api) => {
-  const property: { count: number; setCount?: (count: number) => void } = { count: 0 };
-  const addPanel = () =>
-    addons.add(TAB_ID, {
-      type: types.PANEL,
-      title: () => {
-        const [count, setCount] = useState(property.count);
-        property.setCount = setCount;
-        return <>Mocks{count ? `(${count})` : ''}</>;
-      },
-      render,
-    });
-  api.on(ADDON_ID, (mocks) => {
-    property.count = mocks.length;
-    property.setCount?.(property.count);
+const Title = () => {
+  const [count, setCount] = useState(0);
+  useChannel({
+    [ADDON_ID]: (mocks: unknown[]) => {
+      setCount(mocks ? mocks.length : 0);
+    },
   });
-  addPanel();
+  return <>Mocks{count ? `(${count})` : ''}</>;
+};
+
+addons.register(ADDON_ID, () => {
+  addons.add(TAB_ID, {
+    type: types.PANEL,
+    title: Title,
+    render,
+  });
 });

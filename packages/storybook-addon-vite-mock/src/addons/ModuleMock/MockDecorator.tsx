@@ -6,24 +6,27 @@ import { ADDON_ID, moduleMockParameter } from './types.js';
 
 export const MockDecorator: Decorator = (Story, context) => {
   const { parameters, name, id } = context;
+  const params = useRef(parameters);
+  params.current = parameters;
+
   const emit = useChannel({
     [STORY_RENDER_PHASE_CHANGED]: ({ newPhase, storyId }) => {
-      if (storyId !== id && moduleMock?.mocks) {
-        moduleMock.mocks.forEach((mock) => mock.mockRestore());
-        moduleMock.mocks = undefined;
+      const currentModuleMock = (params.current as Partial<moduleMockParameter>)?.moduleMock;
+      if (storyId !== id && currentModuleMock?.mocks) {
+        currentModuleMock.mocks.forEach((mock) => mock.mockRestore());
+        currentModuleMock.mocks = undefined;
       }
       if (newPhase === 'completed' && storyId === id) {
-        if (moduleMock.mocks) {
-          moduleMock.mocks.forEach((mock) => mock.mockClear());
+        if (currentModuleMock?.mocks) {
+          currentModuleMock.mocks.forEach((mock) => mock.mockClear());
         }
       }
     },
   });
   const [{ args }, render] = useState<{ args?: object }>({});
-  const params = useRef(parameters);
-  const { moduleMock } = params.current as moduleMockParameter;
-  if (!moduleMock?.mocks) {
-    const m = moduleMock?.mock?.();
+  const { moduleMock } = (params.current as Partial<moduleMockParameter>) ?? {};
+  if (moduleMock && !moduleMock.mocks) {
+    const m = moduleMock.mock?.();
     const mocks = !m ? undefined : Array.isArray(m) ? m : [m];
     moduleMock.mocks = mocks;
     moduleMock.render = (args) => render({ args });

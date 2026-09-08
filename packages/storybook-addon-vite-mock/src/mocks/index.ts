@@ -2,11 +2,18 @@
 
 import { Mock, fn, mocks } from 'storybook/test';
 import { ModuleMock, moduleMockParameter } from '../addons/ModuleMock/types.js';
-import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin//mock/index.js';
+import { AnyFunction } from '../vite-plugin/mock/___mock.js';
+import { restoreMock, setMock, getOriginal as _getOriginal } from '../vite-plugin/mock/index.js';
 
-interface P {
-  [name: string]: unknown;
-}
+export type StoryParameters = moduleMockParameter | Record<string, unknown>;
+
+const getModuleMockState = (parameters: StoryParameters): moduleMockParameter['moduleMock'] => {
+  const state = (parameters as Partial<moduleMockParameter>).moduleMock;
+  if (!state) {
+    throw new Error('moduleMock parameter is not configured for this story');
+  }
+  return state;
+};
 
 const hookFn = <T extends (...args: any[]) => any>(hook: (fn1: Mock<T>) => void) => {
   const fnSrc = fn();
@@ -32,9 +39,9 @@ export const createMock = <T extends (...args: any[]) => unknown>(module: T): Mo
     (fn as ModuleMock<T>).__event?.();
   });
 
-  const original = setMock(module, fn as never);
+  const original = setMock(module as AnyFunction, fn as never);
   fn.mockRestore = () => {
-    restoreMock(module);
+    restoreMock(module as AnyFunction);
   };
 
   return Object.assign(fn, {
@@ -43,33 +50,31 @@ export const createMock = <T extends (...args: any[]) => unknown>(module: T): Mo
   }) as ModuleMock<T>;
 };
 
-export const getOriginal = <T extends (...args: any[]) => unknown>(module: T) => {
-  return _getOriginal(module);
+export const getOriginal = <T extends (...args: any[]) => unknown>(module: T): T => {
+  return _getOriginal(module as AnyFunction) as T;
 };
 
 export const getMock = <T extends (...args: any[]) => unknown>(
-  parameters: P,
+  parameters: StoryParameters,
   module: T
 ): ModuleMock<T> => {
-  const mock = (parameters as moduleMockParameter).moduleMock.mocks?.find((mock) => {
-    return mock.__module === module;
-  });
+  const mock = getModuleMockState(parameters).mocks?.find((m) => m.__module === module);
   if (!mock) throw new Error("Can't find mock");
   return mock as unknown as ModuleMock<T>;
 };
 
-export const resetMock = (parameters: P) => {
-  (parameters as moduleMockParameter).moduleMock.mocks?.forEach((mock) => {
-    return mock.mockReset();
+export const resetMock = (parameters: StoryParameters): void => {
+  getModuleMockState(parameters).mocks?.forEach((mock) => {
+    mock.mockReset();
   });
 };
 
-export const clearMock = (parameters: P) => {
-  (parameters as moduleMockParameter).moduleMock.mocks?.forEach((mock) => {
-    return mock.mockClear();
+export const clearMock = (parameters: StoryParameters): void => {
+  getModuleMockState(parameters).mocks?.forEach((mock) => {
+    mock.mockClear();
   });
 };
 
-export const render = (parameters: P, args?: { [key: string]: unknown }) => {
-  (parameters as moduleMockParameter).moduleMock.render(args);
+export const render = (parameters: StoryParameters, args?: { [key: string]: unknown }): void => {
+  getModuleMockState(parameters).render(args);
 };

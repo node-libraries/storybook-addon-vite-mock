@@ -64,29 +64,41 @@ export const NodeInfoDecorator: Decorator = (Story) => {
   const emit = useChannel({});
 
   useEffect(() => {
-    const property: { element?: Element | null } = {};
+    let lastElement: Element | null = null;
+    let frameId: number | null = null;
+
     const handleMouseMove = (e: MouseEvent) => {
       const mouseX = e.clientX;
       const mouseY = e.clientY;
-      const element = document.elementFromPoint(mouseX, mouseY);
-      if (element !== property.element) {
-        property.element = element;
-        const item = element &&
-          !['html', 'body'].includes(element.tagName.toLowerCase()) && {
-            tag: element.tagName,
-            role: getRole(element),
-            accessibility: getAccessibility(element),
-            label: getLabel(element),
-            display: getDisplayValue(element),
-            testId: element.getAttribute('data-testid'),
-            placeholder: element.getAttribute('placeholder'),
-            text: element.textContent?.trim(),
-          };
-        if (item) emit(ADDON_ID, item);
-      }
+
+      if (frameId !== null) return;
+      frameId = requestAnimationFrame(() => {
+        frameId = null;
+        const element = document.elementFromPoint(mouseX, mouseY);
+        if (element !== lastElement) {
+          lastElement = element;
+          const item =
+            element &&
+            !['html', 'body'].includes(element.tagName.toLowerCase()) && {
+              tag: element.tagName,
+              role: getRole(element),
+              accessibility: getAccessibility(element),
+              label: getLabel(element),
+              display: getDisplayValue(element),
+              testId: element.getAttribute('data-testid'),
+              placeholder: element.getAttribute('placeholder'),
+              text: element.textContent?.trim(),
+            };
+          if (item) emit(ADDON_ID, item);
+        }
+      });
     };
+
     document.addEventListener('mousemove', handleMouseMove);
     return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
       document.removeEventListener('mousemove', handleMouseMove);
     };
   }, [emit]);
