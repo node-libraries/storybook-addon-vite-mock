@@ -1,60 +1,27 @@
 {
-  "name": "storybook-addon-vite-mock",
-  "version": "1.1.1",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": "./dist/index.js",
-    "./preset": "./dist/preset.js",
-    "./preview": "./dist/preview.js"
-  },
-  "type": "module",
-  "license": "MIT",
+  "name": "storybook-addon-vite-mock-monorepo",
+  "private": true,
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -b -w",
-    "lint": "eslint ./src",
-    "lint:fix": "eslint --fix ./src",
-    "cp": "npm run build && cpy dist ../../../test/vite/storybook-vite/node_modules/storybook-addon-vite-mock"
-  },
-  "dependencies": {
-    "acorn": "^8.15.0",
-    "acorn-walk": "^8.3.4",
-    "astring": "^1.9.0",
-    "react-json-tree": "^0.20.0",
-    "source-map": "^0.7.6"
+    "dev": "npm-run-all -p dev:addon dev:storybook",
+    "dev:addon": "pnpm --filter storybook-addon-vite-mock watch",
+    "dev:storybook": "pnpm --filter storybook-vite storybook",
+    "build": "pnpm --filter storybook-addon-vite-mock build",
+    "build:all": "pnpm --filter storybook-addon-vite-mock build && pnpm --filter storybook-vite build-storybook",
+    "storybook": "pnpm --filter storybook-vite storybook",
+    "storybook:build": "pnpm --filter storybook-addon-vite-mock build && pnpm --filter storybook-vite storybook:build",
+    "test": "pnpm --filter storybook-addon-vite-mock build && pnpm --filter storybook-vite test",
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r run lint:fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "@storybook/builder-vite": "10.1.10",
-    "@storybook/react": "^10.1.10",
-    "@types/react": "^19.2.7",
-    "@typescript-eslint/eslint-plugin": "^8.50.0",
-    "@typescript-eslint/parser": "^8.50.0",
-    "cpy-cli": "^6.0.0",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import": "^2.32.0",
-    "react": "^19.2.3",
-    "storybook": "^10.1.10",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.0",
-    "vite": "^7.3.0"
+    "npm-run-all": "^4.1.5"
   },
-  "resolutions": {
-    "strip-ansi": "6.0.1"
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
-  "keywords": [
-    "storybook",
-    "react",
-    "test",
-    "jest",
-    "mock",
-    "vite",
-    "module",
-    "import",
-    "interactions"
-  ],
+  "version": "0.0.0",
+  "repository": "https://github.com/node-libraries/storybook-addon-vite-mock",
   "author": "SoraKumo <info@croud.jp>",
-  "repository": "https://github.com/node-libraries/storybook-addon-vite-mock"
+  "license": "MIT"
 }

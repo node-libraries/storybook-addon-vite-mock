@@ -20,7 +20,7 @@ export const viteFinal: ViteFinal = async (config, options) => {
       viteMockPlugin({
         exclude: ({ id, code }) => {
           const p = path.dirname(id);
-          if (['@storybook', 'storybook@'].some((v) => p.includes(v))) return true;
+          if (['@storybook', 'storybook@', 'vite-plugin-storybook'].some((v) => p.includes(v))) return true;
           const exclude =
             code
               .split('\n')
@@ -33,12 +33,9 @@ export const viteFinal: ViteFinal = async (config, options) => {
                   '// node_modules/.pnpm/storybook-addon-vite-mock',
                   '// node_modules/.pnpm/@storybook',
                   '// node_modules/.pnpm/storybook@',
+                  '// node_modules/.pnpm/vite-plugin-storybook',
                 ].find((v) => line.startsWith(v))
               ) || o.exclude?.({ id, code });
-          // if (!exclude) {
-          //   console.log('--', p);
-          //   console.log(code.split('\n').filter((v) => v.includes('// node_modules')));
-          // }
           return exclude;
         },
         debugPath: o.debugPath,
