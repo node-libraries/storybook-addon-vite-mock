@@ -12,16 +12,14 @@ export const managerEntries = (entry: string[] = []): string[] => [
   require.resolve('./manager.js'),
 ];
 
-const IGNORED_PATH_SEGMENTS = ['@storybook', 'storybook@', 'vite-plugin-storybook'];
-const IGNORED_COMMENT_PREFIXES = [
-  '// node_modules/.cache',
-  '// node_modules/storybook-addon-vite-mock',
-  '// node_modules/@storybook',
-  '// node_modules/storybook@',
-  '// node_modules/.pnpm/storybook-addon-vite-mock',
-  '// node_modules/.pnpm/@storybook',
-  '// node_modules/.pnpm/storybook@',
-  '// node_modules/.pnpm/vite-plugin-storybook',
+const IGNORED_ID_PATTERNS = [
+  /[\\/]sb-vite[\\/]/,
+  /[\\/]\.cache[\\/]/,
+  /[\\/]deps[\\/]/,
+  /@storybook/,
+  /storybook@/,
+  /storybook[\\/]/,
+  /vite-plugin-storybook/,
 ];
 
 export const viteFinal: ViteFinal = async (config, options) => {
@@ -31,12 +29,29 @@ export const viteFinal: ViteFinal = async (config, options) => {
     plugins: [
       viteMockPlugin({
         exclude: ({ id, code }) => {
-          const p = path.dirname(id);
-          if (IGNORED_PATH_SEGMENTS.some((v) => p.includes(v))) return true;
-          return (
-            IGNORED_COMMENT_PREFIXES.some((prefix) => code.includes(prefix)) ||
-            Boolean(o.exclude?.({ id, code }))
-          );
+          if (IGNORED_ID_PATTERNS.some((pattern) => pattern.test(id))) {
+            return true;
+          }
+          const basename = path.basename(id);
+          if (basename.startsWith('@storybook') || basename.startsWith('storybook')) {
+            return true;
+          }
+          const exclude =
+            code
+              .split('\n')
+              .some((line) =>
+                [
+                  '// node_modules/.cache',
+                  '// node_modules/storybook-addon-vite-mock',
+                  '// node_modules/@storybook',
+                  '// node_modules/storybook@',
+                  '// node_modules/.pnpm/storybook-addon-vite-mock',
+                  '// node_modules/.pnpm/@storybook',
+                  '// node_modules/.pnpm/storybook@',
+                  '// node_modules/.pnpm/vite-plugin-storybook',
+                ].find((v) => line.startsWith(v))
+              ) || Boolean(o.exclude?.({ id, code }));
+          return exclude;
         },
         debugPath: o.debugPath,
       }),
