@@ -33,10 +33,15 @@ pnpm storybook:build
 ### 4. Run Tests
 
 ```bash
+# Test against built static Storybook
 pnpm test
-```
 
-Runs the test runner against the built Storybook with coverage report.
+# Test against development server (starts dev server automatically, tests, and terminates)
+pnpm test:dev
+
+# Test against currently running Storybook (at http://localhost:9001)
+pnpm storybook:test
+```
 
 ---
 

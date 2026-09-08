@@ -185,7 +185,10 @@ export const viteMockPlugin = (props?: Options): Plugin => {
         const sourceMapGenerator = new SourceMapGenerator({
           file: normalizePath,
         });
-        const newCode = generate(ast, { sourceMap: sourceMapGenerator });
+        const newCode = generate(ast, {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sourceMap: sourceMapGenerator as any,
+        });
 
         if (debugPath) {
           fs.writeFileSync(path.resolve(debugPath, `${name}-out.js`), newCode);

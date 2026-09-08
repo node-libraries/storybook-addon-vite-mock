@@ -206,11 +206,14 @@ pnpm dev
 # Run Storybook dev server
 pnpm storybook
 
-# Build Storybook static output
-pnpm storybook:build
-
-# Run Storybook test-runner
+# Run Storybook test-runner against production build
 pnpm test
+
+# Run Storybook test-runner against Storybook dev server (auto start & teardown)
+pnpm test:dev
+
+# Run Storybook test-runner against an already running Storybook instance (port 9001)
+pnpm test:running
 
 # Run ESLint across packages
 pnpm lint

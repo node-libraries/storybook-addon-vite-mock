@@ -10,6 +10,8 @@
     "storybook": "pnpm --filter storybook-vite storybook",
     "storybook:build": "pnpm --filter storybook-addon-vite-mock build && pnpm --filter storybook-vite storybook:build",
     "test": "pnpm --filter storybook-addon-vite-mock build && pnpm --filter storybook-vite test",
+    "test:dev": "pnpm --filter storybook-addon-vite-mock build && pnpm --filter storybook-vite test:dev",
+    "test:running": "pnpm --filter storybook-vite storybook:test",
     "lint": "pnpm -r run lint",
     "lint:fix": "pnpm -r run lint:fix"
   },

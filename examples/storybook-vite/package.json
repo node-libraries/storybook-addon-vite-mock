@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "test": "pnpm storybook:build && npm-run-all -p -r storybook:start storybook:test",
+    "test:dev": "npm-run-all -p -r storybook:dev:ci storybook:test:dev",
     "storybook": "rimraf node_modules/.cache && storybook dev -p 9001",
+    "storybook:dev:ci": "rimraf node_modules/.cache && storybook dev -p 9009 --ci --exact-port",
     "build-storybook": "storybook build",
     "storybook:build": "rimraf node_modules/.cache && storybook build",
     "storybook:start": "http-server -s -p 9001 storybook-static",
-    "storybook:test": "test-storybook --url http://127.0.0.1:9001 --coverage",
+    "storybook:test": "wait-on -t 60000 tcp:127.0.0.1:9001 && test-storybook --url http://127.0.0.1:9001 --coverage",
+    "storybook:test:dev": "wait-on -t 60000 tcp:127.0.0.1:9009 && test-storybook --url http://127.0.0.1:9009 --coverage",
     "lint": "eslint --fix ./stories",
     "lint:fix": "eslint --fix ./stories"
   },
@@ -48,7 +51,8 @@
     "storybook-addon-vite-mock": "workspace:*",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.69.0",
-    "vite": "^7.3.0"
+    "vite": "^7.3.0",
+    "wait-on": "^9.1.0"
   },
   "main": "index.js",
   "repository": "https://github.com/node-libraries/storybook-addon-vite-mock",
