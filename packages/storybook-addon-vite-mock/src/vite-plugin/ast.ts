@@ -63,34 +63,64 @@ export function isEsmImport(ast: Program): boolean {
  * Checks if the module is simply re-exporting imported items (proxy module).
  */
 export function isProxy(ast: Program): boolean {
-  const imports = new Set<string>();
-  const exports = new Set<string>();
+  const importedLocals = new Set<string>();
+  const exportedLocals = new Set<string>();
 
   simple(ast, {
     ImportSpecifier(node) {
-      if ('name' in node.imported) imports.add(node.imported.name);
+      if ('name' in node.local) importedLocals.add(node.local.name);
     },
-    ExportSpecifier(node) {
-      if ('name' in node.exported) exports.add(node.exported.name);
+    ImportDefaultSpecifier(node) {
+      if ('name' in node.local) importedLocals.add(node.local.name);
+    },
+    ImportNamespaceSpecifier(node) {
+      if ('name' in node.local) importedLocals.add(node.local.name);
     },
     ExportNamedDeclaration(node) {
+      if (node.source) {
+        node.specifiers?.forEach((specifier) => {
+          if ('name' in specifier.local) exportedLocals.add(specifier.local.name);
+        });
+        return;
+      }
       if (node.declaration) {
         if ('declarations' in node.declaration) {
           node.declaration.declarations.forEach((decl) => {
-            if ('name' in decl.id) exports.add(decl.id.name);
+            if ('name' in decl.id) exportedLocals.add(decl.id.name);
           });
-        } else if (node.declaration.id) {
-          exports.add(node.declaration.id.name);
+        } else if (node.declaration.id && 'name' in node.declaration.id) {
+          exportedLocals.add(node.declaration.id.name);
         }
       }
       if (node.specifiers) {
         node.specifiers.forEach((specifier) => {
-          if ('name' in specifier.local) exports.add(specifier.local.name);
+          if ('name' in specifier.local) exportedLocals.add(specifier.local.name);
         });
       }
     },
   });
-  return Array.from(exports).every((name) => imports.has(name)) && exports.size > 0;
+
+  return (
+    exportedLocals.size > 0 &&
+    Array.from(exportedLocals).every((name) => importedLocals.has(name))
+  );
+}
+
+/**
+ * Returns all local variable names declared by top-level imports.
+ */
+export function getTopLevelImportNames(ast: Program): Set<string> {
+  const names = new Set<string>();
+  for (const node of ast.body) {
+    if (node.type === 'ImportDeclaration') {
+      for (const specifier of node.specifiers) {
+        if ('name' in specifier.local) {
+          names.add(specifier.local.name);
+        }
+      }
+    }
+  }
+  return names;
 }
 
 /**

@@ -5,7 +5,7 @@ import { generate } from 'astring';
 import { SourceMapGenerator } from 'source-map';
 import { Plugin } from 'vite';
 import { AddonOptions } from '../types.js';
-import { isCommonJSWrap, isEsmImport, isProxy, toAst } from './ast.js';
+import { getTopLevelImportNames, isCommonJSWrap, isEsmImport, isProxy, toAst } from './ast.js';
 import {
   DEFAULT,
   VIRTUAL_MOCK_NAME,
@@ -19,9 +19,34 @@ const MOCK_FILE = './mock/___mock.js';
 export type Options = AddonOptions;
 
 /**
+ * Built-in patterns for modules that should never be transformed by this plugin:
+ * - Virtual modules
+ * - Vite internal endpoints & clients
+ * - Pre-bundled dependencies (deps/) & cache directories
+ * - Storybook internals & Vite plugins
+ * - Story files & Storybook configs
+ */
+export const DEFAULT_IGNORED_PATTERNS: RegExp[] = [
+  /^\0/,
+  /^virtual:/,
+  /[\\/]@vite[\\/]/,
+  /[\\/]vite[\\/]dist[\\/]client/,
+  /\?html-proxy/,
+  /\?raw/,
+  /\?url/,
+  /[\\/]node_modules[\\/](?:@vitejs[\\/]|vite-plugin-|@storybook[\\/]|storybook[\\/])/,
+  /[\\/]node_modules[\\/]\.pnpm[\\/](?:@storybook\+|storybook@|vite-plugin-storybook)/,
+  /\.stories\.[^.]+$/,
+  /[\\/]\.storybook[\\/]/,
+];
+
+/**
  * Builds mock injection AST and re-export AST based on detected exports.
  */
-function buildMockInjections(exports: Record<string, string>): {
+function buildMockInjections(
+  exports: Record<string, string>,
+  topLevelImportNames: Set<string>
+): {
   insertMockCode: string[];
   reExportCode: string;
 } {
@@ -43,10 +68,32 @@ function buildMockInjections(exports: Record<string, string>): {
     );
   }
 
-  const reExportCode =
-    (namedExports.length
-      ? `export const {${namedExports.map(([name]) => name).join(', ')}} = ___exports;`
-      : '') + (isDefault ? `\nexport default ___exports.${DEFAULT};` : '');
+  // Handle named exports: alias any exports that clash with top-level imports to prevent duplicate declaration SyntaxError
+  const directExports: string[] = [];
+  const aliasedExports: string[] = [];
+
+  for (const [name] of namedExports) {
+    if (topLevelImportNames.has(name)) {
+      aliasedExports.push(
+        `const ___mock_export_${name} = ___exports.${name}; export { ___mock_export_${name} as ${name} };`
+      );
+    } else {
+      directExports.push(name);
+    }
+  }
+
+  const exportStatements: string[] = [];
+  if (directExports.length > 0) {
+    exportStatements.push(`export const {${directExports.join(', ')}} = ___exports;`);
+  }
+  if (aliasedExports.length > 0) {
+    exportStatements.push(...aliasedExports);
+  }
+  if (isDefault) {
+    exportStatements.push(`export default ___exports.${DEFAULT};`);
+  }
+
+  const reExportCode = exportStatements.join('\n');
 
   return { insertMockCode, reExportCode };
 }
@@ -81,7 +128,12 @@ export const viteMockPlugin = (props?: Options): Plugin => {
       }
     },
     transform(code, id) {
-      if (!id.match(/\.(ts|js)(\?.*)?$/) || id === VIRTUAL_MOCK_NAME || exclude?.({ id, code })) {
+      if (
+        !id.match(/\.(ts|js|tsx|jsx)(\?.*)?$/) ||
+        id === VIRTUAL_MOCK_NAME ||
+        DEFAULT_IGNORED_PATTERNS.some((pattern) => pattern.test(id)) ||
+        exclude?.({ id, code })
+      ) {
         return null;
       }
 
@@ -115,9 +167,10 @@ export const viteMockPlugin = (props?: Options): Plugin => {
           );
         }
 
+        const topLevelImportNames = getTopLevelImportNames(ast);
         const exports = removeExport(ast);
         if (Object.keys(exports).length > 0) {
-          const { insertMockCode, reExportCode } = buildMockInjections(exports);
+          const { insertMockCode, reExportCode } = buildMockInjections(exports, topLevelImportNames);
           const insertMockAst = toAst(insertMockCode.join('\n'));
 
           ast.body.push(...insertMockAst.body);

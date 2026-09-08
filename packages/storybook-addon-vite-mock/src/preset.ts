@@ -13,13 +13,8 @@ export const managerEntries = (entry: string[] = []): string[] => [
 ];
 
 const IGNORED_ID_PATTERNS = [
-  /[\\/]sb-vite[\\/]/,
-  /[\\/]\.cache[\\/]/,
-  /[\\/]deps[\\/]/,
-  /@storybook/,
-  /storybook@/,
-  /storybook[\\/]/,
-  /vite-plugin-storybook/,
+  /[\\/]node_modules[\\/](?:@storybook[\\/]|storybook[\\/]|vite-plugin-storybook)/,
+  /[\\/]node_modules[\\/]\.pnpm[\\/](?:@storybook\+|storybook@|vite-plugin-storybook)/,
 ];
 
 export const viteFinal: ViteFinal = async (config, options) => {
