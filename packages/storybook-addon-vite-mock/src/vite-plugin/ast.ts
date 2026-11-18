@@ -26,12 +26,14 @@ export function setAstZero(ast: Program): void {
 /**
  * Parses JavaScript/TypeScript output code into an acorn AST with zeroed positions.
  */
-export function toAst(code: string): Program {
+export function toAst(code: string, sourceFile?: string): Program {
   const ast = parse(code, {
     sourceType: 'module',
     ecmaVersion: 'latest',
     allowReturnOutsideFunction: true,
     allowImportExportEverywhere: true,
+    locations: true,
+    sourceFile,
   });
   setAstZero(ast);
   return ast;

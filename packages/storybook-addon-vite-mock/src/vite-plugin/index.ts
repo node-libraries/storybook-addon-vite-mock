@@ -15,6 +15,7 @@ import {
 } from './transform.js';
 
 const MOCK_FILE = './mock/___mock.js';
+const RESOLVED_VIRTUAL_MOCK_ID = `\0${VIRTUAL_MOCK_NAME}`;
 
 export type Options = AddonOptions;
 
@@ -115,12 +116,12 @@ export const viteMockPlugin = (props?: Options): Plugin => {
     name: 'storybook-addon-vite-mock',
     resolveId(id) {
       if (id === VIRTUAL_MOCK_NAME) {
-        return VIRTUAL_MOCK_NAME;
+        return RESOLVED_VIRTUAL_MOCK_ID;
       }
       return null;
     },
     load(id) {
-      if (id === VIRTUAL_MOCK_NAME) {
+      if (id === RESOLVED_VIRTUAL_MOCK_ID || id === VIRTUAL_MOCK_NAME) {
         return fs.readFileSync(
           path.resolve(path.dirname(fileURLToPath(import.meta.url)), MOCK_FILE),
           'utf-8'
@@ -137,17 +138,16 @@ export const viteMockPlugin = (props?: Options): Plugin => {
         return null;
       }
 
-      const ast = toAst(code);
+      const normalizePath = path.relative(
+        path.normalize(path.resolve('./')),
+        path.normalize(id.replaceAll('?', '-').replaceAll('\0', ''))
+      );
+      const ast = toAst(code, normalizePath);
       if (excludeFromAst?.({ id, code, ast })) return null;
 
       if (isEsmImport(ast) || isCommonJSWrap(ast) || isProxy(ast)) {
         return null;
       }
-
-      const normalizePath = path.relative(
-        path.normalize(path.resolve('./')),
-        path.normalize(id.replaceAll('?', '-').replaceAll('\0', ''))
-      );
       const name = normalizePath
         .replaceAll('/', '-')
         .replaceAll('\\', '-')

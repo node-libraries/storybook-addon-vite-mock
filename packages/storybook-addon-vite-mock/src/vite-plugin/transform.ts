@@ -1,4 +1,4 @@
-import { AssignmentExpression, ExportSpecifier, Program, Statement } from 'acorn';
+import { AssignmentExpression, ExportSpecifier, Pattern, Program, Statement } from 'acorn';
 import { simple } from 'acorn-walk';
 import { toAst } from './ast.js';
 
@@ -37,6 +37,28 @@ export function convertCommonJS(ast: Program): 'module' | 'exports' | undefined 
 }
 
 /**
+ * Recursively extracts all bound identifier names from a binding pattern.
+ */
+function extractPatternNames(pattern: Pattern): string[] {
+  switch (pattern.type) {
+    case 'Identifier':
+      return [pattern.name];
+    case 'ObjectPattern':
+      return pattern.properties.flatMap((prop) =>
+        prop.type === 'RestElement' ? extractPatternNames(prop.argument) : extractPatternNames(prop.value)
+      );
+    case 'ArrayPattern':
+      return pattern.elements.flatMap((el) => (el ? extractPatternNames(el) : []));
+    case 'RestElement':
+      return extractPatternNames(pattern.argument);
+    case 'AssignmentPattern':
+      return extractPatternNames(pattern.left);
+    default:
+      return [];
+  }
+}
+
+/**
  * Extracts export statements from the AST, replaces them with local declarations,
  * and returns a map of exportName -> localIdentifierName.
  */
@@ -45,12 +67,12 @@ export function removeExport(ast: Program): Record<string, string> {
 
   ast.body = ast.body.flatMap((node) => {
     if (node.type === 'ExportNamedDeclaration' && !node.source) {
-      if (
-        node.declaration?.type === 'VariableDeclaration' &&
-        node.declaration.declarations?.[0]?.id.type === 'Identifier'
-      ) {
-        const name = node.declaration.declarations[0].id.name;
-        exports[name] = name;
+      if (node.declaration?.type === 'VariableDeclaration') {
+        for (const declarator of node.declaration.declarations) {
+          for (const name of extractPatternNames(declarator.id)) {
+            exports[name] = name;
+          }
+        }
         return [node.declaration];
       }
       if (
@@ -95,66 +117,38 @@ export function removeExport(ast: Program): Record<string, string> {
         exports[DEFAULT] = node.declaration.id.name;
         return [node.declaration];
       }
-      if (
-        node.declaration.type === 'ArrowFunctionExpression' ||
-        node.declaration.type === 'FunctionDeclaration' ||
-        node.declaration.type === 'Literal' ||
-        node.declaration.type === 'ClassDeclaration' ||
-        node.declaration.type === 'ObjectExpression'
-      ) {
-        exports[DEFAULT] = DEFAULT;
-        return {
-          type: 'VariableDeclaration',
-          declarations: [
-            {
-              type: 'VariableDeclarator',
-              id: {
-                type: 'Identifier',
-                name: DEFAULT,
-                start: node.declaration.start,
-                end: node.declaration.end,
-              },
-              init: node.declaration as never,
-              start: node.declaration.start,
-              end: node.declaration.end,
-            },
-          ],
-          kind: 'const',
-          start: node.start,
-          end: node.end,
-        };
-      }
-      if (
-        node.declaration.type === 'CallExpression' &&
-        node.declaration.callee.type === 'Identifier'
-      ) {
-        exports[DEFAULT] = DEFAULT;
-        return {
-          type: 'VariableDeclaration',
-          declarations: [
-            {
-              type: 'VariableDeclarator',
-              id: {
-                type: 'Identifier',
-                name: DEFAULT,
-                start: node.declaration.start,
-                end: node.declaration.end,
-              },
-              init: node.declaration as never,
-              start: node.declaration.start,
-              end: node.declaration.end,
-            },
-          ],
-          kind: 'const',
-          start: node.start,
-          end: node.end,
-        };
-      }
       if (node.declaration.type === 'Identifier') {
         exports[DEFAULT] = node.declaration.name;
         return [];
       }
-      throw new Error('Not implemented');
+      const initNode =
+        node.declaration.type === 'FunctionDeclaration'
+          ? { ...node.declaration, type: 'FunctionExpression' }
+          : node.declaration.type === 'ClassDeclaration'
+          ? { ...node.declaration, type: 'ClassExpression' }
+          : node.declaration;
+
+      exports[DEFAULT] = DEFAULT;
+      return {
+        type: 'VariableDeclaration',
+        declarations: [
+          {
+            type: 'VariableDeclarator',
+            id: {
+              type: 'Identifier',
+              name: DEFAULT,
+              start: node.declaration.start,
+              end: node.declaration.end,
+            },
+            init: initNode as never,
+            start: node.declaration.start,
+            end: node.declaration.end,
+          },
+        ],
+        kind: 'const',
+        start: node.start,
+        end: node.end,
+      };
     }
     return [node];
   });

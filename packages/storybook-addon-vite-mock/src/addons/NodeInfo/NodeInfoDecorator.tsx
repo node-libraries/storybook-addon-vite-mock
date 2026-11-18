@@ -7,7 +7,7 @@ const getDisplayValue = (element: Element) =>
   element instanceof HTMLInputElement
     ? element.value
     : element instanceof HTMLSelectElement
-    ? element.options[element.selectedIndex].value
+    ? element.options[element.selectedIndex]?.value
     : undefined;
 
 const getRole = (node: Element) => {
@@ -60,46 +60,60 @@ const getAccessibility = (node: Element) =>
       .map(({ name, value }) => [name, value]),
   ]);
 
+let activeListenerCount = 0;
+let currentEmit: ReturnType<typeof useChannel> | null = null;
+let lastElement: Element | null = null;
+let frameId: number | null = null;
+
+const handleMouseMove = (e: MouseEvent) => {
+  const mouseX = e.clientX;
+  const mouseY = e.clientY;
+
+  if (frameId !== null) return;
+  frameId = requestAnimationFrame(() => {
+    frameId = null;
+    const element = document.elementFromPoint(mouseX, mouseY);
+    if (element !== lastElement) {
+      lastElement = element;
+      const item =
+        element &&
+        !['html', 'body'].includes(element.tagName.toLowerCase()) && {
+          tag: element.tagName,
+          role: getRole(element),
+          accessibility: getAccessibility(element),
+          label: getLabel(element),
+          display: getDisplayValue(element),
+          testId: element.getAttribute('data-testid'),
+          placeholder: element.getAttribute('placeholder'),
+          text: element.textContent?.trim(),
+        };
+      if (item && currentEmit) currentEmit(ADDON_ID, item);
+    }
+  });
+};
+
 export const NodeInfoDecorator: Decorator = (Story) => {
   const emit = useChannel({});
 
   useEffect(() => {
-    let lastElement: Element | null = null;
-    let frameId: number | null = null;
+    currentEmit = emit;
+    if (activeListenerCount === 0) {
+      document.addEventListener('mousemove', handleMouseMove);
+    }
+    activeListenerCount += 1;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-
-      if (frameId !== null) return;
-      frameId = requestAnimationFrame(() => {
-        frameId = null;
-        const element = document.elementFromPoint(mouseX, mouseY);
-        if (element !== lastElement) {
-          lastElement = element;
-          const item =
-            element &&
-            !['html', 'body'].includes(element.tagName.toLowerCase()) && {
-              tag: element.tagName,
-              role: getRole(element),
-              accessibility: getAccessibility(element),
-              label: getLabel(element),
-              display: getDisplayValue(element),
-              testId: element.getAttribute('data-testid'),
-              placeholder: element.getAttribute('placeholder'),
-              text: element.textContent?.trim(),
-            };
-          if (item) emit(ADDON_ID, item);
-        }
-      });
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
     return () => {
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
+      activeListenerCount -= 1;
+      if (activeListenerCount <= 0) {
+        activeListenerCount = 0;
+        currentEmit = null;
+        lastElement = null;
+        if (frameId !== null) {
+          cancelAnimationFrame(frameId);
+          frameId = null;
+        }
+        document.removeEventListener('mousemove', handleMouseMove);
       }
-      document.removeEventListener('mousemove', handleMouseMove);
     };
   }, [emit]);
   return <Story />;

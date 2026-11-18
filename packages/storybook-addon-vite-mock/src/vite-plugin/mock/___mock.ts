@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyFunction = (...params: any[]) => any;
 export type ___setMock = typeof ___setMock;
