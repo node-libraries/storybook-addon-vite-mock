@@ -1,32 +1,20 @@
 import { Decorator } from '@storybook/react';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { STORY_RENDER_PHASE_CHANGED } from 'storybook/internal/core-events';
-import { useChannel, useEffect, useRef, useState } from 'storybook/preview-api';
+import { useChannel } from 'storybook/preview-api';
 import { ADDON_ID, Mocks, moduleMockParameter } from './types.js';
 
 type InternalModuleMock = moduleMockParameter['moduleMock'] & { __storyId?: string };
 
-export const MockDecorator: Decorator = (Story, context) => {
-  const { parameters, name, id, viewMode } = context;
+const MockWrapper: React.FC<{
+  Story: Parameters<Decorator>[0];
+  context: Parameters<Decorator>[1];
+  emit: ReturnType<typeof useChannel>;
+}> = ({ Story, context, emit }) => {
+  const { parameters, name, id } = context;
   const params = useRef(parameters);
   params.current = parameters;
   const ownMocksRef = useRef<Mocks | undefined>(undefined);
-
-  const emit = useChannel({
-    [STORY_RENDER_PHASE_CHANGED]: ({ newPhase, storyId }) => {
-      const currentModuleMock = (params.current as Partial<moduleMockParameter>)?.moduleMock;
-      if (viewMode !== 'docs' && storyId !== id && currentModuleMock?.mocks) {
-        currentModuleMock.mocks.forEach((mock) => mock.mockRestore());
-        currentModuleMock.mocks = undefined;
-        ownMocksRef.current = undefined;
-      }
-      if (newPhase === 'completed' && storyId === id) {
-        if (currentModuleMock?.mocks) {
-          currentModuleMock.mocks.forEach((mock) => mock.mockClear());
-        }
-      }
-    },
-  });
 
   useEffect(() => {
     return () => {
@@ -47,20 +35,19 @@ export const MockDecorator: Decorator = (Story, context) => {
     | InternalModuleMock
     | undefined;
   if (rawModuleMock && rawModuleMock.__storyId !== id) {
-    (params.current as Partial<moduleMockParameter>).moduleMock = {
-      ...rawModuleMock,
-      __storyId: id,
-      mocks: undefined,
-    } as InternalModuleMock;
+    rawModuleMock.__storyId = id;
+    rawModuleMock.mocks = undefined;
   }
 
   const { moduleMock } = (params.current as Partial<moduleMockParameter>) ?? {};
+  if (moduleMock) {
+    moduleMock.render = (nextArgs) => render({ args: nextArgs });
+  }
   if (moduleMock && !moduleMock.mocks) {
     const m = moduleMock.mock?.();
     const mocks = !m ? undefined : Array.isArray(m) ? m : [m];
     moduleMock.mocks = mocks;
     ownMocksRef.current = mocks;
-    moduleMock.render = (args) => render({ args });
     if (mocks) {
       const sendStat = () => {
         emit(
@@ -77,7 +64,30 @@ export const MockDecorator: Decorator = (Story, context) => {
     }
   }
   if (name === '$$mock$$') return <></>;
-  return Story(args ? { args } : undefined);
+  return <>{Story(args ? { args } : undefined)}</>;
+};
+
+export const MockDecorator: Decorator = (Story, context) => {
+  const { parameters, id, viewMode } = context;
+  const params = useRef(parameters);
+  params.current = parameters;
+
+  const emit = useChannel({
+    [STORY_RENDER_PHASE_CHANGED]: ({ newPhase, storyId }) => {
+      const currentModuleMock = (params.current as Partial<moduleMockParameter>)?.moduleMock;
+      if (viewMode !== 'docs' && storyId !== id && currentModuleMock?.mocks) {
+        currentModuleMock.mocks.forEach((mock) => mock.mockRestore());
+        currentModuleMock.mocks = undefined;
+      }
+      if (newPhase === 'completed' && storyId === id) {
+        if (currentModuleMock?.mocks) {
+          currentModuleMock.mocks.forEach((mock) => mock.mockClear());
+        }
+      }
+    },
+  });
+
+  return <MockWrapper Story={Story} context={context} emit={emit} />;
 };
 
 export const parameters: moduleMockParameter = {

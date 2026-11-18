@@ -13,14 +13,18 @@ export const managerEntries = (entry: string[] = []): string[] => [
 ];
 
 const IGNORED_ID_PATTERNS = [
-  /[\\/]node_modules[\\/](?:@storybook[\\/]|storybook[\\/]|vite-plugin-storybook)/,
-  /[\\/]node_modules[\\/]\.pnpm[\\/](?:@storybook\+|storybook@|vite-plugin-storybook)/,
+  /[\\/]axe-core[\\/]/,
+  /[\\/]node_modules[\\/](?:@storybook[\\/]|storybook[\\/]|@vitest[\\/]|vitest[\\/]|vite-plugin-storybook|storybook-addon-vite-mock[\\/])/,
+  /[\\/]node_modules[\\/]\.pnpm[\\/](?:@storybook\+|storybook@|@vitest\+|vitest@|vite-plugin-storybook|storybook-addon-vite-mock@)/,
 ];
 
 export const viteFinal: ViteFinal = async (config, options) => {
   const o = options as Options & AddonOptions;
   const { mergeConfig } = await import('vite');
   return mergeConfig(config, {
+    optimizeDeps: {
+      include: ['storybook/internal/core-events'],
+    },
     plugins: [
       viteMockPlugin({
         exclude: ({ id, code }) => {

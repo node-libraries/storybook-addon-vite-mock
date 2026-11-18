@@ -35,8 +35,11 @@ export const DEFAULT_IGNORED_PATTERNS: RegExp[] = [
   /\?html-proxy/,
   /\?raw/,
   /\?url/,
-  /[\\/]node_modules[\\/](?:@vitejs[\\/]|vite-plugin-|@storybook[\\/]|storybook[\\/])/,
-  /[\\/]node_modules[\\/]\.pnpm[\\/](?:@storybook\+|storybook@|vite-plugin-storybook)/,
+  /__vitest_browser__/,
+  /[\\/]axe-core[\\/]/,
+  /[\\/]node_modules[\\/](?:@vitejs[\\/]|vite-plugin-|@storybook[\\/]|storybook[\\/]|@vitest[\\/]|vitest[\\/]|storybook-addon-vite-mock[\\/])/,
+  /[\\/]node_modules[\\/]\.pnpm[\\/](?:@storybook\+|storybook@|@vitest\+|vitest@|vite-plugin-storybook|storybook-addon-vite-mock@)/,
+  /[\\/]packages[\\/]storybook-addon-vite-mock[\\/]dist[\\/]/,
   /\.stories\.[^.]+$/,
   /[\\/]\.storybook[\\/]/,
 ];
